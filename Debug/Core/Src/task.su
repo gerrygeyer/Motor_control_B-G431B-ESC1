@@ -1,0 +1,16 @@
+../Core/Src/task.c:52:13:timer_function	16	static
+../Core/Src/task.c:103:6:init_task	8	static
+../Core/Src/task.c:172:6:time_management	8	static
+../Core/Src/task.c:197:6:engine_mode_observer	8	static
+../Core/Src/task.c:213:6:switch_state_observer	4	static
+../Core/Src/task.c:228:6:engine_mode_start_stopp	4	static
+../Core/Src/task.c:236:6:engine_start_function	4	static
+../Core/Src/task.c:241:6:engine_stopp_function	4	static
+../Core/Src/task.c:245:6:engine_init_function	4	static
+../Core/Src/task.c:252:9:highspeed_task	40	static
+../Core/Src/task.c:463:7:middlespeed_task	16	static
+../Core/Src/task.c:486:6:lowspeed_task	8	static
+../Core/Src/task.c:508:6:test_function_speed	16	static
+../Core/Src/task.c:555:13:PWM_All_Stop	4	static
+../Core/Src/task.c:569:13:PWM_All_Start	4	static
+../Core/Src/task.c:584:13:SAFETY_system_state_observer	4	static

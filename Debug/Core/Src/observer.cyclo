@@ -1,0 +1,3 @@
+../Core/Src/observer.c:18:6:openloop	1
+../Core/Src/observer.c:37:6:start_time_measurement	1
+../Core/Src/observer.c:42:10:stopp_time_measurement	1

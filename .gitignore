@@ -1,0 +1,26 @@
+# Build artifacts
+build/
+Debug/
+*.o
+*.obj
+*.elf
+*.bin
+*.hex
+
+# CMake / VSCode
+CMakeCache.txt
+cmake_install.cmake
+/cmake/
+.vscode/
+
+# Compiled Python
+__pycache__/
+
+# macOS
+.DS_Store
+
+# Misc
+*.log
+build
+mx.scratch
+!.settings

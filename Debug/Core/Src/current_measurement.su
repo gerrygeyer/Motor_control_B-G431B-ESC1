@@ -1,0 +1,6 @@
+../Core/Src/current_measurement.c:53:6:init_current_measurement	4	static
+../Core/Src/current_measurement.c:77:6:execute_current_measurement	32	static
+../Core/Src/current_measurement.c:143:6:get_realCurrentQ15	16	static
+../Core/Src/current_measurement.c:150:6:execute_voltage_measurement	8	static
+../Core/Src/current_measurement.c:154:9:get_voltage_value	4	static
+../Core/Src/current_measurement.c:158:6:HAL_ADC_ConvCpltCallback	24	static

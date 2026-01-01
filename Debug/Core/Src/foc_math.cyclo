@@ -1,0 +1,17 @@
+../Core/Src/foc_math.c:24:6:init_math	1
+../Core/Src/foc_math.c:135:9:sin_t	4
+../Core/Src/foc_math.c:159:9:cos_t	1
+../Core/Src/foc_math.c:279:7:getSineValue_360	1
+../Core/Src/foc_math.c:293:7:getCosValue_360	1
+../Core/Src/foc_math.c:311:7:limit_f	5
+../Core/Src/foc_math.c:329:9:get_INT16_representation	1
+../Core/Src/foc_math.c:337:6:IIR_LP_filter_dq	1
+../Core/Src/foc_math.c:355:13:IIR_LP_filter_alpha_beta	1
+../Core/Src/foc_math.c:372:13:IIR_LP_filter_observer_alpha_beta	1
+../Core/Src/foc_math.c:389:7:IIR_LP_filter_Iq_set	1
+../Core/Src/foc_math.c:401:9:IIR_LP_filter_Speed	1
+../Core/Src/foc_math.c:409:9:IIR_LP_filter_Speed_f	1
+../Core/Src/foc_math.c:418:6:circle_limiter_maxVoltage	6
+../Core/Src/foc_math.c:463:7:eucl_norm2_approx	3
+../Core/Src/foc_math.c:492:10:sqrt_fast_uint	3
+../Core/Src/foc_math.c:510:6:circle_limitation_Q15	7

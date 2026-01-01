@@ -1,0 +1,9 @@
+../Core/Src/svm.c:25:6:init_SVM	1
+../Core/Src/svm.c:33:12:execute_SVM_matlab	13
+../Core/Src/svm.c:85:7:SVM_input_Va_Vb_Vc	9
+../Core/Src/svm.c:116:7:Sinus_Va_Vb_Vc	1
+../Core/Src/svm.c:127:6:generate_svm_output	1
+../Core/Src/svm.c:134:6:set_output_to_zero	1
+../Core/Src/svm.c:141:14:get_abc_output_voltage	1
+../Core/Src/svm.c:145:9:SVM_Q15	7
+../Core/Src/svm.c:164:12:get_PWM_OUTPUT_Q15	1

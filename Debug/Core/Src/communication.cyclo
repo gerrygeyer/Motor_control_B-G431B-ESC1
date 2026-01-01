@@ -1,0 +1,7 @@
+../Core/Src/communication.c:63:6:init_communication	2
+../Core/Src/communication.c:98:6:HAL_UART_RxCpltCallback	9
+../Core/Src/communication.c:149:6:data_recived	8
+../Core/Src/communication.c:202:6:get_information	2
+../Core/Src/communication.c:213:6:automatic_switch_off	1
+../Core/Src/communication.c:224:6:Collect_And_Print_Data	7
+../Core/Src/communication.c:277:6:data_log_speed_current_500Hz	4

@@ -1,0 +1,12 @@
+../Core/Src/control.c:34:6:init_control_functions	24	static
+../Core/Src/control.c:76:6:clear_control_parameter	4	static
+../Core/Src/control.c:121:6:update_PI_parameter	8	static
+../Core/Src/control.c:129:7:PI_controller	48	static
+../Core/Src/control.c:148:7:PI_iq	24	static
+../Core/Src/control.c:183:7:PI_id	24	static
+../Core/Src/control.c:215:6:PI_id_iq	64	static
+../Core/Src/control.c:263:7:PI_speed	64	static
+../Core/Src/control.c:311:6:reset_pi_integrator	4	static
+../Core/Src/control.c:323:6:PI_id_iq_Q15	40	static
+../Core/Src/control.c:397:16:multiplicate_two_q15	24	static
+../Core/Src/control.c:403:9:pi_speed_q15	48	static

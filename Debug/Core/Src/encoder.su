@@ -1,0 +1,6 @@
+../Core/Src/encoder.c:51:6:init_encoder	4	static
+../Core/Src/encoder.c:64:6:set_encoder_to_zero	24	static
+../Core/Src/encoder.c:74:6:calc_speed_and_position	16	static
+../Core/Src/encoder.c:95:9:get_el_angle	16	static
+../Core/Src/encoder.c:103:9:speed_calculation	24	static
+../Core/Src/encoder.c:171:16:iir_lp_speed_q15	16	static

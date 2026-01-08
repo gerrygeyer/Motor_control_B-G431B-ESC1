@@ -28,8 +28,10 @@
 #include <task.h>
 #include <settings.h>
 
-#include <foc.h>
-#include <foc_math.h>
+#include "motor_sm.h"
+#include "motor_types.h"
+#include "foc.h"
+#include "foc_math.h"
 
 #include <observer.h>
 #include <svm.h>
@@ -76,6 +78,7 @@ DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
 volatile uint16_t InjADC_Reading = 0;
+extern Motor g_motor;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -264,7 +267,7 @@ int main(void)
   }
   */
 
-
+ MotorSM_Init(&g_motor);
 
   /* USER CODE END 2 */
 
@@ -272,6 +275,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    MotorSM_Service(&g_motor);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

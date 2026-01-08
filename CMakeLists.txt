@@ -76,12 +76,31 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
 )
 
-# Remove wrong libob.a library dependency when using cpp files
-list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
+# Force Thumb mode
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
+    -mthumb
+    -mcpu=cortex-m4
+    -mfloat-abi=hard
+    -mfpu=fpv4-sp-d16
+)
+
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    -mthumb
+    -mcpu=cortex-m4
+    -Wl,--gc-sections
+    -Wl,--print-memory-usage
+)
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
-
+    -lm
     # Add user defined libraries
+)
+
+# Debug & Flash Targets
+add_custom_target(flash
+    COMMAND bash -c "openocd -f interface/stlink.cfg -f target/stm32g4x.cfg -c init -c 'reset init' -c 'program ${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.elf verify reset exit'"
+    DEPENDS ${CMAKE_PROJECT_NAME}
+    COMMENT "Flashing STM32 with OpenOCD..."
 )

@@ -44,7 +44,7 @@ Field-Oriented Control is an advanced motor control technique that provides:
 
 **[motor_sm.h](./Core/Inc/motor_sm.h) / [motor_sm.c](./Core/Src/motor_sm.c)**
 - Implements a state machine for motor control
-- States: STOP, CLOSEDLOOP, OPENLOOP, GOTOSTART, FAULT
+- States: ST_STOP, ST_CLOSEDLOOP, ST_OPENLOOP, ST_GOTOSTART, ST_FAULT
 - Handles transitions and events
 
 **[motor_types.h](./Core/Inc/motor_types.h)**
@@ -117,13 +117,13 @@ The controller parameters for the outer speed control loop are set according to 
 
 ## Motor States
 
-The motor control system operates in the following states:
+The motor control system operates in the following states (defined in `motor_types.h`):
 
-- **STOP**: Motor is stopped, no PWM output
-- **CLOSEDLOOP**: FOC with speed control using encoder feedback
-- **OPENLOOP**: Open-loop control mode
-- **GOTOSTART**: Motor startup sequence
-- **FAULT**: Error state triggered by overcurrent or other faults
+- **ST_STOP**: Motor is stopped, no PWM output
+- **ST_CLOSEDLOOP**: FOC with speed control using encoder feedback
+- **ST_OPENLOOP**: Open-loop control mode
+- **ST_GOTOSTART**: Motor startup sequence
+- **ST_FAULT**: Error state triggered by overcurrent or other faults
 
 ## References
 

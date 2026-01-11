@@ -8,20 +8,6 @@
 #ifndef INC_CURRENT_MEASUREMENT_H_
 #define INC_CURRENT_MEASUREMENT_H_
 
-#include <foc.h>
-
-/*
- * ADC1:
- * 		CH3 			<- OAMP1
- * 		CH12 			<- OAMP3
- * 		CH1				<- VBUS
- * ADC2:
- * 		CH3				<- OAMP2
- * 		ChannelVopamp3 	<- OAMP3
- *
- */
-
-
 #define SHUNT_MEASRUEMENT_DIRECTION -1
 
 #define ADC_OFFSET_A 	2025 //0x82F  // Offset of 4096/2
@@ -143,6 +129,8 @@ ab_t get_realCurrentQ15(void);
  * execute the ADC in regular mode to measured the battery voltage
  */
 void execute_voltage_measurement(void);
+void read_voltage_value(FOC_HandleTypeDef *pHandle_foc);
+
 
 /*
  * return the adc voltage

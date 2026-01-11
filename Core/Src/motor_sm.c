@@ -214,6 +214,20 @@ static void State_Fault(SM_StateMachine* self, void* eventData)
 
 void MotorSM_Service(Motor* m)
 {
+    if(m->stop_request_flag){
+        m->stop_request_flag = false;
+        m->start_request_flag = false;
+        MTR_Stop(m);
+        return;
+    }
+    if(m->start_request_flag){
+        m->start_request_flag = false;
+        MTR_RunClosedLoop(m);
+    }
+    if(m->gotostart_finish_flag){
+        // m->gotostart_finish_flag = false; <-- do not reset here
+        MTR_Stop(m);
+    }
     if (oc_trip) {
         oc_trip = false;
         MTR_Fault(m);

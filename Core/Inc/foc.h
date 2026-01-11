@@ -27,10 +27,6 @@
 #define OFF			0
 
 
-
-
-
-
 void init_foc(FOC_HandleTypeDef *pHandle_foc);
 void clear_foc(FOC_HandleTypeDef *pHandle);
 alphabeta_f clark_transformation(ab_f Input);

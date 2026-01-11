@@ -9,13 +9,13 @@
  *
  *
  */
-#include <main.h>
-#include <current_measurement.h>
-#include <stdio.h>
-#include <foc.h>
-#include <foc_math.h>
-#include <observer.h>
-#include <task.h>
+ #include <stdio.h>
+#include "main.h"
+#include "parameter.h"
+#include "foc_math.h"
+#include "current_measurement.h"
+#include "observer.h"
+#include "task.h"
 
 extern DMA_HandleTypeDef hdma_adc2;
 extern ADC_HandleTypeDef hadc1;
@@ -31,7 +31,7 @@ abi32_t debug_current_after_dc;
 
 
 ab_f dc_value, lp_z_memory, current_debug_f;
-ab_t current_int, current_int_old, current_averange;
+
 
 ab_f cur_val_dc;
 ab16_t offset;
@@ -46,8 +46,6 @@ int16_t IIR_DC_FILTER_A;
 float IIR_DC_Filter_f, ONE_MINUS_IIR_DC_Filter_f;
 
 
-
-ab_f debug_current_integer;
 
 
 void init_current_measurement(void){
@@ -153,6 +151,10 @@ void execute_voltage_measurement(void){
 
 int16_t get_voltage_value(void){
 	return (adc_value);
+}
+
+void read_voltage_value(FOC_HandleTypeDef *pHandle_foc){
+	pHandle_foc->source_voltage = adc_value;
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {

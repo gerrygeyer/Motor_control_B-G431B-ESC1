@@ -7,7 +7,7 @@
 #include <current_measurement.h>
 
 #include <encoder.h>
-#include<svm.h>
+#include <svm.h>
 #include <foc.h>
 
 // variables/structs
@@ -100,32 +100,17 @@ void clear_foc(FOC_HandleTypeDef *pHandle){ // need this for start and stop with
 }
 
 void execute_FOC(FOC_HandleTypeDef *pHandle_foc, float Iq){
-
-	ab_f Iab;
-	alphabeta_f I_alpha_beta, V_alpha_beta;
-	dq_f Idq, Idq_error, Idq_set;
-	abc_f V_abc;
-//	abc_16t V_abc_t;
-	angle_f el_theta;
-
-
 	int16_t theta;
 
 	// for change the parameter online
 	update_PI_parameter();
 
 	switch (pHandle_foc->foc_mode){
-	case FOC_OPENLOOP:
+	case FOC_OPENLOOP: // generates openloop voltage vector without control
 		theta = pHandle_foc->theta_openloop;
-//		debug_speed = get_speed_from_angle16_t(theta);
 
 		el_theta_q15.sin = sin_t(theta);
 		el_theta_q15.cos = cos_t(theta);
-//				Iab_q15 = get_realCurrentQ15();
-//
-//				I_alph_bet_q15 = clark_transformation_q15(Iab_q15);
-//				Idq_q15 = park_transformation_q15(I_alph_bet_q15, el_theta_q15);
-
 
 		Vdq_q15.q = 0;
 		V_alph_bet_q15 = inverse_park_transformation_q15(Vdq_q15,el_theta_q15);
@@ -139,38 +124,36 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, float Iq){
 
 	default:
 
-
-		// ########## Q15 BEGIN ##########
 		theta = pHandle_foc->theta;
 		Idq_set_q15.d = 0;
 		Idq_set_q15.q = pHandle_foc->Iq_set_q15; // transform_current_to_Q15(Iq);
 
-
-		el_theta_q15.sin = sin_t(theta);
+		el_theta_q15.sin = sin_t(theta);		// get sine and cosine in Q15
 		el_theta_q15.cos = cos_t(theta);
-		Iab_q15 = get_realCurrentQ15();
+		Iab_q15 = get_realCurrentQ15();		// get measured currents in Q15
 
-		I_alph_bet_q15 = clark_transformation_q15(Iab_q15);
-		Idq_q15 = park_transformation_q15(I_alph_bet_q15, el_theta_q15);
+		I_alph_bet_q15 = clark_transformation_q15(Iab_q15);	// Clarke transformation
+		Idq_q15 = park_transformation_q15(I_alph_bet_q15, el_theta_q15);	// Park transformation
+
+		/*
+			*  	Median Filter (solve Problem of noise spikes)
+			*/
 
 		median_filter_d_t(&Idq_q15.d);
 		median_filter_q_t(&Idq_q15.q);
 
-		Vdq_q15 = PI_id_iq_Q15(error_fct(Idq_set_q15, Idq_q15), pHandle_foc);
-		V_alph_bet_q15 = inverse_park_transformation_q15(Vdq_q15,el_theta_q15);
-		V_abc_q15 = inverse_clark_transformation_q15(V_alph_bet_q15);
+		Vdq_q15 = PI_id_iq_Q15(error_fct(Idq_set_q15, Idq_q15), pHandle_foc); // PI current control in Q15
+		V_alph_bet_q15 = inverse_park_transformation_q15(Vdq_q15,el_theta_q15);	// Inverse Park transformation
+		V_abc_q15 = inverse_clark_transformation_q15(V_alph_bet_q15);	// Inverse Clarke transformation
 
 		pHandle_foc->V_q15.a = V_abc_q15.a;
 		pHandle_foc->V_q15.b = V_abc_q15.b;
 		pHandle_foc->V_q15.c = V_abc_q15.c;
 
-
 		Idq_q15_scope.d = Idq_q15.d;
 		Idq_q15_scope.q = Idq_q15.q;
 
 		Idq_set_q15_scope.q = Idq_set_q15.q;
-
-		// ########## Q15 END ##########
 
 	break;
 	}
@@ -178,7 +161,6 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, float Iq){
 	pHandle_foc->V_q15.a = V_abc_q15.a;
 	pHandle_foc->V_q15.b = V_abc_q15.b;
 	pHandle_foc->V_q15.c = V_abc_q15.c;
-
 
 	// for
 	pHandle_foc->Iq_value = Idq_q15.q;
@@ -377,8 +359,6 @@ static abc_16t inverse_clark_transformation_q15(alphabeta_t v){
 
 
 void generate_openloop(int16_t speed_rpm, FOC_HandleTypeDef *pHandle){
-
-
 
 	int32_t angle_count;
 	uint32_t angle = pHandle->theta_openloop;

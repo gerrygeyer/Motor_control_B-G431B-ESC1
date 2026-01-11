@@ -6,10 +6,8 @@
  */
 
 
-#include <control.h>
-#include <foc.h>
 #include "parameter.h"
-#include <settings.h>
+#include "settings.h"
 
 
 float Pi_d_buffer, Pi_d_windup, Pi_q_buffer,Pi_q_windup, Pi_speed_buffer, Pi_speed_windup, Pi_pos_windup, Pi_pos_buffer; // Integration for PI control
@@ -426,6 +424,7 @@ int16_t pi_speed_q15 (int32_t speed_rpm, int32_t speed_rpm_ref, FOC_HandleTypeDe
 	C = P + (I_speed_buffer_q20 >> 5);
 
 	Output = CLAMP_INT32_TO_INT16(C);
+	pHandle_foc->Iq_set_q15 = Output;
 
 	return (Output);
 }

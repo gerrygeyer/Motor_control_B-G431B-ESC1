@@ -10,9 +10,7 @@
 
 #include <stdint.h>
 #include "parameter.h"
-#include <task.h>
-#include <foc.h>
-#include <main.h>
+#include "main.h"
 
 extern TIM_HandleTypeDef htim2;
 

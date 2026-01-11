@@ -39,6 +39,9 @@ typedef struct {
     volatile MotorState state;
     volatile int16_t speed_ref;
     position_information_t position_info;
+    volatile bool gotostart_finish_flag;
+    volatile bool stop_request_flag;
+    volatile bool start_request_flag;
 } Motor;
 
 

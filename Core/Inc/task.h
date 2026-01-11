@@ -7,21 +7,11 @@
 
 #ifndef INC_TASK_H_
 #define INC_TASK_H_
-#include "parameter.h"
-#include <svm.h>
-#include <foc.h>
-#include <svm.h>
-#include <foc.h>
-#include <current_measurement.h>  // for debugging
-#include <foc_math.h>
-#include <encoder.h>
 #include <stm32g4xx_it.h>
-//#include <observer.h>
-#include <communication.h>
-#include <main.h>
-//#include <settings.h>
+#include <stm32g4xx_it.h>
 #include "parameter.h"
-#include <control.h>
+#include "foc_math.h"
+
 
 // #########  DEFINE STATES  ##############
 

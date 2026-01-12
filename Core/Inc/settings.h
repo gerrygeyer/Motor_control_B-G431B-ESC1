@@ -42,13 +42,4 @@
 #define DEBUG_MODE 						OFF
 
 
-
-
-
-// ######### Sliding Mode ####################
-
-
-#define SLIDING_MODE SIGMOID
-//#define SLIDING_MODE SIGNUM
-
 #endif /* INC_SETTINGS_H_ */

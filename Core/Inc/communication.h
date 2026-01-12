@@ -9,6 +9,7 @@
 #define INC_COMMUNICATION_H_
 
 #include <stdint.h>
+#include "parameter.h"
 
 
 // communication

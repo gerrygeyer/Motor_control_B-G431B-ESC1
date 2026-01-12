@@ -19,7 +19,7 @@
 #define MIDDLE_FREQUENCY_DIVIDER 20         // 20 000 / 20 = 1000 Hz
 #define LOW_FREQUENCY_DIVIDER 200       // 20 000 / 200 = 100 Hz
 
-
-void motor_time_management(Motor *m);
+void init_motor_task(void);
+void motor_time_management(void);
 
 #endif /* INC_MOTOR_TASK_H_ */

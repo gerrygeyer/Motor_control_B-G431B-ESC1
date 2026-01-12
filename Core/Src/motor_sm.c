@@ -19,7 +19,7 @@ extern volatile bool btn_closed_edge;
 extern volatile bool btn_open_edge;
 extern volatile bool btn_gotostart_edge;
 
-/* ======== Mini SM Kernel (wie endurodave, gekürzt) ======== */
+/* ======== Mini SM Kernel  ======== */
 typedef struct SM_StateMachine SM_StateMachine;
 
 typedef void (*SM_StateFunc)(SM_StateMachine* self, void* eventData);
@@ -29,7 +29,7 @@ typedef struct {
 } SM_StateStruct;
 
 struct SM_StateMachine {
-    Motor*  m;             // pInstance direkt typisiert
+    Motor*  m;             
     uint8_t currentState;
     uint8_t newState;
     bool    eventGenerated;
@@ -75,8 +75,15 @@ static void SM_ExternalEvent(SM_StateMachine* self,
                             uint8_t newState,
                             void* eventData)
 {
+    if (newState == EVENT_IGNORED) {
+        return;
+    }
+    if (newState == CANNOT_HAPPEN) {
+        /* assert/log */
+        return;
+    }
     if (newState >= maxStates) {
-        /* optional: assert/log */
+        /* assert/log */
         return;
     }
 
@@ -125,41 +132,79 @@ void MotorSM_Init(Motor* m)
 
 void MTR_Stop(Motor* m)
 {
-    (void)m; // wir nutzen die globale sm-Instanz; alternativ pro Motor eigene sm
-    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, ST_STOP, NULL);
+    (void)m; 
+        static const uint8_t TRANSITIONS[ST_MAX] = {
+        [ST_STOP]      = EVENT_IGNORED,
+        [ST_CLOSEDLOOP]= ST_STOP,
+        [ST_OPENLOOP]  = ST_STOP,
+        [ST_GOTOSTART] = ST_STOP,
+        [ST_FAULT]     = CANNOT_HAPPEN
+    };
+
+    uint8_t next = TRANSITIONS[sm.currentState];
+    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, next, NULL);
 }
 
 void MTR_RunClosedLoop(Motor* m)
 {
     (void)m;
-    static RpmData d = { .rpm = 3000 };      // Default; später gern parametrieren
-    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, ST_CLOSEDLOOP, &d);
+
+    static const uint8_t TRANSITIONS[ST_MAX] = {
+        [ST_STOP]      = ST_CLOSEDLOOP,
+        [ST_CLOSEDLOOP]= EVENT_IGNORED,
+        [ST_OPENLOOP]  = ST_CLOSEDLOOP,
+        [ST_GOTOSTART] = EVENT_IGNORED,
+        [ST_FAULT]     = CANNOT_HAPPEN
+    };
+
+    uint8_t next = TRANSITIONS[sm.currentState];
+    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, next, NULL);
 }
 
 void MTR_RunOpenLoop(Motor* m)
 {
     (void)m;
-    static RpmData d = { .rpm = 3000 };      // Default; später gern parametrieren
-    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, ST_OPENLOOP, &d);
+        static const uint8_t TRANSITIONS[ST_MAX] = {
+        [ST_STOP]      = ST_OPENLOOP,
+        [ST_CLOSEDLOOP]= ST_OPENLOOP,
+        [ST_OPENLOOP]  = EVENT_IGNORED,
+        [ST_GOTOSTART] = EVENT_IGNORED,
+        [ST_FAULT]     = CANNOT_HAPPEN
+    };
+
+    uint8_t next = TRANSITIONS[sm.currentState];
+    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, next, NULL);
 }
 
-void MTR_RunSensorless(Motor* m)
-{
-    (void)m;
-    /* noch nicht implementiert: entweder ignorieren oder FAULT */
-    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, ST_FAULT, NULL);
-}
 
 void MTR_GotoStart(Motor* m)
 {
     (void)m;
-    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, ST_GOTOSTART, NULL);
+
+    static const uint8_t TRANSITIONS[ST_MAX] = {
+        [ST_STOP]      = ST_GOTOSTART,
+        [ST_CLOSEDLOOP]= EVENT_IGNORED,
+        [ST_OPENLOOP]  = EVENT_IGNORED,
+        [ST_GOTOSTART] = EVENT_IGNORED,
+        [ST_FAULT]     = CANNOT_HAPPEN
+    };
+    uint8_t next = TRANSITIONS[sm.currentState];
+    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, next, NULL);
 }
 
 void MTR_Fault(Motor* m)
 {
     (void)m;
-    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, ST_FAULT, NULL);
+    static const uint8_t TRANSITIONS[ST_MAX] = {
+        [ST_STOP]      = ST_FAULT,
+        [ST_CLOSEDLOOP]= ST_FAULT,
+        [ST_OPENLOOP]  = ST_FAULT,
+        [ST_GOTOSTART] = ST_FAULT,
+        [ST_FAULT]     = EVENT_IGNORED
+    };
+
+    uint8_t next = TRANSITIONS[sm.currentState];
+    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, next, NULL);
 }
 
 /* ======== State-Handler Implementierungen ======== */

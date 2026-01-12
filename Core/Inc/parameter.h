@@ -269,29 +269,13 @@ typedef struct {
 }data;
 
 typedef struct{
-
-	float i_alpha;
-	float i_beta;
-
-	float i_a;
-	float i_b;
-
-	float i_d;
-	float i_q;
-
-	float v_alpha;
-	float v_beta;
-
 	abc_f v_abc;
 	abc_16t v_abc_t;
 	dq_f v_circle;
 
-
 	int32_t speed_ref;
 	int32_t speed;
 	int32_t speed_rad;
-	int32_t speed_rad_lp;
-	int32_t speed_mean_value;
 
 	uint16_t theta;
 	uint16_t theta_openloop;

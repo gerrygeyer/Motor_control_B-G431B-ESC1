@@ -11,42 +11,15 @@
 #include <foc.h>
 #include "parameter.h"
 
-memory_dq IIR_LP;
-memory_dq_t IIR_LP_t;
+
 memory_alpha_beta IIR_vLP, IIR_sLP;
-float IIR_iq_a = IIR_LP_CURRENT_A;
 float memory_iq;
-int32_t IIR_LP_a_t, IIR_LP_speed_mem, IIR_LP_speed_a;
-float IIR_LP_speed_a_f,IIR_LP_speed_mem_f;
+
 
 uint8_t circle_flag = 0;
 
 void init_math(void){
-	IIR_LP.new.d = 0;
-	IIR_LP.new.q = 0;
-	IIR_LP.old.d = 0;
-	IIR_LP.old.q = 0;
 
-	IIR_LP_t.new.d = 0;
-	IIR_LP_t.new.q = 0;
-	IIR_LP_t.old.d = 0;
-	IIR_LP_t.old.q = 0;
-
-	IIR_vLP.new.alpha = 0;
-	IIR_vLP.new.beta = 0;
-	IIR_vLP.old.alpha = 0;
-	IIR_vLP.old.beta = 0;
-
-	IIR_sLP.new.alpha = 0;
-	IIR_sLP.new.beta = 0;
-	IIR_sLP.old.alpha = 0;
-	IIR_sLP.old.beta = 0;
-
-	memory_iq = 0.0;
-
-	IIR_LP_a_t = 0;
-	IIR_LP_speed_a = 112;
-	IIR_LP_speed_a_f = 0.112f;
 }
 /*
  * Sine Lookup Table [0, pi/2]
@@ -330,128 +303,6 @@ int16_t get_INT16_representation(float value){
 	return (value * INT16_MAX_VALUE);
 }
 
-/*
- * IIR FILTER
- * Source: https://de.mathworks.com/help/mcb/ref/iirfilter.html
- */
-dq_f IIR_LP_filter_dq(dq_f I){
-
-	dq_f Output;
-
-	IIR_LP.new.d = IIR_LP_CURRENT_A * I.d + (1 - IIR_LP_CURRENT_A) * IIR_LP.old.d;
-	IIR_LP.old.d = IIR_LP.new.d;
-
-	IIR_LP.new.q = IIR_LP_CURRENT_A * I.q + (1 - IIR_LP_CURRENT_A) * IIR_LP.old.q;
-	IIR_LP.old.q = IIR_LP.new.q;
-
-	Output.d = IIR_LP.new.d;
-	Output.q = IIR_LP.new.q;
-
-
-	return (Output);
-}
-
-
-alphabeta_f IIR_LP_filter_alpha_beta(alphabeta_f I){
-
-	alphabeta_f Output;
-
-	IIR_vLP.new.alpha = IIR_vLP_CURRENT_A * I.alpha + (1 - IIR_LP_CURRENT_A) * IIR_vLP.old.alpha;
-	IIR_vLP.old.alpha = IIR_vLP.new.alpha;
-
-	IIR_vLP.new.beta = IIR_vLP_CURRENT_A * I.beta + (1 - IIR_LP_CURRENT_A) * IIR_vLP.old.beta;
-	IIR_vLP.old.beta = IIR_vLP.new.beta;
-
-	Output.alpha = IIR_vLP.new.alpha;
-	Output.beta = IIR_vLP.new.beta;
-
-
-	return (Output);
-}
-
-alphabeta_f IIR_LP_filter_observer_alpha_beta(alphabeta_f I, float a){
-
-	alphabeta_f Output;
-
-	IIR_sLP.new.alpha = a * I.alpha + (1 - a) * IIR_sLP.old.alpha;
-	IIR_sLP.old.alpha = IIR_sLP.new.alpha;
-
-	IIR_sLP.new.beta = a * I.beta + (1 - a) * IIR_vLP.old.beta;
-	IIR_sLP.old.beta = IIR_sLP.new.beta;
-
-	Output.alpha = IIR_sLP.new.alpha;
-	Output.beta = IIR_sLP.new.beta;
-
-
-	return (Output);
-}
-
-float IIR_LP_filter_Iq_set(float iq){
-
-	float Output,a;
-
-	a = IIR_iq_a;
-
-	Output = a * iq + (1 - a) * memory_iq;
-	memory_iq = Output;
-
-	return Output;
-}
-
-int16_t IIR_LP_filter_Speed(int16_t input){
-	int16_t Output;
-
-	Output = (IIR_LP_speed_a * input + (1000 - IIR_LP_speed_a) * IIR_LP_speed_mem)/1000;
-	IIR_LP_speed_mem = Output;
-
-	return (Output);
-}
-int16_t IIR_LP_filter_Speed_f(int16_t input){
-	int16_t Output;
-
-	Output = (int16_t)(IIR_LP_speed_a_f * (float)input + (1.0f - IIR_LP_speed_a_f) * IIR_LP_speed_mem_f);
-	IIR_LP_speed_mem_f = (float)Output;
-
-	return (Output);
-}
-
-dq_f circle_limiter_maxVoltage(dq_f v_12){
-
-	dq_f Output, V;
-	float v_ref;
-
-
-	if(v_12.d > MAX_VOLTAGE){
-		v_12.d = MAX_VOLTAGE;
-	}
-	if(v_12.d < -MAX_VOLTAGE){
-		v_12.d = -MAX_VOLTAGE;
-	}
-	if(v_12.q > MAX_VOLTAGE){
-		v_12.q = MAX_VOLTAGE;
-	}
-	if(v_12.q < -MAX_VOLTAGE){
-		v_12.q = -MAX_VOLTAGE;
-	}
-
-	V.d = v_12.d / MAX_VOLTAGE;
-	V.q = v_12.q / MAX_VOLTAGE;
-
-	v_ref = eucl_norm2_approx(V.d, V.q);
-//	float test = eucl_norm2_approx_int(V.d, V.q);
-
-		// Limit Vector in circle
-		if (v_ref > 1.0f){
-			Output.d = (v_12.d / v_ref);
-			Output.q = (v_12.q / v_ref);
-		}else{
-			Output.d = v_12.d;
-			Output.q = v_12.q;
-		}
-
-	return (Output);
-
-}
 
 
 

@@ -24,18 +24,30 @@ static void lowspeed_motor_task(Motor *m);
 
 FOC_HandleTypeDef foc_values;
 
-void motor_time_management(Motor *m)
+void init_motor_task(void)
+{
+    init_foc(&foc_values);
+    init_control_functions();
+    init_SVM();
+    init_current_measurement();
+    init_encoder();
+    init_communication();
+    init_math();
+}
+
+
+void motor_time_management(void)
 {
     static uint16_t middlespeed_task_counter = 0;
     static uint16_t lowspeed_task_counter = 0;
 
-    highspeed_motor_task(m);
+    highspeed_motor_task(&g_motor);
 
 
     // Middlespeed task
     if(middlespeed_task_counter >= MIDDLE_FREQUENCY_DIVIDER){
         middlespeed_task_counter = 0;
-        middlespeed_motor_task(m);
+        middlespeed_motor_task(&g_motor);
         
     }else{
         middlespeed_task_counter += 1;
@@ -44,7 +56,7 @@ void motor_time_management(Motor *m)
     // Lowspeed task
     if(lowspeed_task_counter >= LOW_FREQUENCY_DIVIDER){
         lowspeed_task_counter = 0;
-        lowspeed_motor_task(m);
+        lowspeed_motor_task(&g_motor);
     }else{
         lowspeed_task_counter += 1;
     }
@@ -55,7 +67,6 @@ void motor_time_management(Motor *m)
 
 static void highspeed_motor_task(Motor *m)
 {
-    // Implement highspeed task logic here
     switch (m->state)
     {
         svm_output pwm_output;

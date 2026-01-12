@@ -47,19 +47,19 @@
 #define IIR_ZERO_A			((PI_MULTIPLY_2 * FOC_TS * 1.0f)/(PI_MULTIPLY_2 * FOC_TS * 1.0f + 1.0f))
 #define RPM_TO_RAD_S		0.104719755119660f
 
-#define Q10					1024
-#define Q11					2048
-#define Q12					4096
-#define Q13					8192
-#define Q14					16384
-#define Q15					32768
-#define Q16					65536
-#define Q18					262144
-#define Q19					524288
-#define Q20					1048576
-#define Q22					4194304
-#define Q29					536870912
-#define Q30					1073741824
+#define Q10					(1024-1)
+#define Q11					(2048-1)
+#define Q12					(4096-1)
+#define Q13					(8192-1)
+#define Q14					(16384-1)
+#define Q15					(32768-1)
+#define Q16					(65536-1)
+#define Q18					(262144-1)
+#define Q19					(524288-1)
+#define Q20					(1048576-1)
+#define Q22					(4194304-1)
+#define Q29					(536870912-1)
+#define Q30					(1073741824-1)
 
 #define RAD2RPMQ15			3431
 #define DIV_2_SQRT3Q14		18919

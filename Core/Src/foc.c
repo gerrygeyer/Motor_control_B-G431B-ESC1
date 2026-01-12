@@ -6,6 +6,7 @@
 #include <observer.h>
 #include <current_measurement.h>
 
+#include "control.h"
 #include <encoder.h>
 #include <svm.h>
 #include <foc.h>
@@ -13,13 +14,11 @@
 // variables/structs
 dq_f Vdq; // PI_C output
 pll_f pll;	// Speed_estimation PLL
-int16_t angle_old; // Speed_estimation
 
 dq_f Vdq_openloop;
 
 int32_t debug_speed;
 float debug_output_Vq;
-uint8_t switch_to_observer;
 
 abc_16t V_abc_q15;
 alphabeta_t I_alph_bet_q15, V_alph_bet_q15;
@@ -49,14 +48,6 @@ float debug_current_Iq;
 // init function
 void init_foc(FOC_HandleTypeDef *pHandle){
 
-	pHandle->i_alpha 	= 0.0f;
-	pHandle->i_beta		= 0.0f;
-	pHandle->v_alpha	= 0.0f;
-	pHandle->v_beta		= 0.0f;
-
-	Vdq.d 				= 0.0f;
-	Vdq.q 				= 0.0f;
-
 	Vdq_q15.d			= 0;
 	Vdq_q15.q			= 0;
 
@@ -68,32 +59,9 @@ void init_foc(FOC_HandleTypeDef *pHandle){
 	pHandle->v_circle.q	= 3.0f;
 
 
-	pll.ki_int 			= 0.0f;
-	pll.out_int			= 0.0f;
-
-	angle_old = 0;
-
-	switch_to_observer = 0;
-
 }
 
 void clear_foc(FOC_HandleTypeDef *pHandle){ // need this for start and stop without setting new Kp,Ki,.. values
-
-		pHandle->i_alpha 	= 0.0f;
-		pHandle->i_beta		= 0.0f;
-		pHandle->v_alpha	= 0.0f;
-		pHandle->v_beta		= 0.0f;
-		pHandle->i_d		= 0.0f;
-		pHandle->i_q		= 0.0f;
-		pHandle->i_alpha	= 0.0f;
-		pHandle->i_beta		= 0.0f;
-		pHandle->i_a		= 0.0f;
-		pHandle->i_b		= 0.0f;
-//		pHandle->v_circle.d	= 3.0f;	// not 0 please
-//		pHandle->v_circle.q	= 3.0f;
-
-		Vdq.d 				= 0.0f;
-		Vdq.q 				= 0.0f;
 
 		clear_control_parameter();
 

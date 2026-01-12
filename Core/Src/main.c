@@ -29,12 +29,15 @@
 #include <settings.h>
 
 #include "motor_sm.h"
+#include "motor_sm.h"
 #include "motor_types.h"
 #include "foc.h"
 #include "foc_math.h"
 
 #include <observer.h>
 #include <svm.h>
+
+#include "motor_task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -228,6 +231,7 @@ int main(void)
 
 //########### Initialization #############
   init_task();
+  init_motor_task();
 //########################
 
 //  if (HAL_ADC_Start(&hadc1) != HAL_OK) {

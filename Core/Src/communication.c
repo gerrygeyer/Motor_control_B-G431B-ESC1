@@ -135,7 +135,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         	}
         	communication.old_state = communication.old_state;
         	// we have connection
-        	com_counter = 0;
+        	recive_motor_command();
         	// limit the input for safty
         	communication.speed_command = (communication.speed_command > MAX_SPEED)? MAX_SPEED: communication.speed_command;
         	communication.speed_command = (communication.speed_command< -MAX_SPEED)? -MAX_SPEED: communication.speed_command;
@@ -158,18 +158,6 @@ void get_information(data* pHandle){	// old function, delete later
 	if(recive_finish){
 	pHandle->state = communication.state;
 	pHandle->speed_command = communication.speed_command;
-	}
-}
-
-/*
- *  a function that stops the motor if the connection is lost
- *  for a certain period of time
- */
-void automatic_switch_off(void){
-	com_counter += 1;
-	if ((com_counter > 1000) && AUTOMATIC_SWITCH_OFF){
-		engine_stopp_function();
-		communication.old_state = MOTOR_NO_RESPONSE;
 	}
 }
 

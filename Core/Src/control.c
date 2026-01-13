@@ -8,6 +8,7 @@
 
 #include "parameter.h"
 #include "settings.h"
+#include "foc_math.h"
 
 
 float Pi_d_buffer, Pi_d_windup, Pi_q_buffer,Pi_q_windup, Pi_speed_buffer, Pi_speed_windup, Pi_pos_windup, Pi_pos_buffer; // Integration for PI control

@@ -122,8 +122,25 @@
 
 #define OPENLOOP_VOLTAGE	(float)2.5
 
-//#define ENCODER_PULS_PER_REVOLUTION	4096
-#define ENCODER_PULS_PER_REVOLUTION	4000
+// ############ ENCODER PARAMETER ######################
+#define ENCODER_PULS_PER_REVOLUTION	4096
+// #define ENCODER_PULS_PER_REVOLUTION	4000
+
+/* 
+ *	also the right Timer Period must be set!
+ *	in CubeMX under Timer 4 settings, or directly in main.c 
+ *	inside of MX_TIM4_Init() function:
+
+*/
+/*
+static void MX_TIM4_Init(void)
+{
+...
+  htim4.Init.Period = 63999; <- (4000 * 16)-1
+  OR
+  htim4.Init.Period = 65535; <- (4096 * 16)-1
+...
+*/
 
 // ############## typedef structs ######################
 

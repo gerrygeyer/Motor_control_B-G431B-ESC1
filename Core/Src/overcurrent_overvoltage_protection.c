@@ -5,13 +5,12 @@
  *      Author: Gerry Geyer
  */
 #include<main.h>
-#include<task.h>
 
 void init_protection(void){
 
 }
 
 void overcurrent_occurs(void){
-	engine_stopp_function();
+
 	Error_Handler();
 }

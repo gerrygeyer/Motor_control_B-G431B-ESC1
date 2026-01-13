@@ -25,12 +25,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include <task.h>
 #include <settings.h>
 
 #include "motor_sm.h"
 #include "motor_sm.h"
 #include "motor_types.h"
+#include "motor_safety.h"
 #include "foc.h"
 #include "foc_math.h"
 
@@ -159,6 +159,9 @@ int main(void)
   MX_COMP4_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+
+  motor_check_parameter(&htim4); // check if the encoder parameter is correct
+
   // first, let´s wait. Be respectful, let others take the lead (depends on the motor number)
   uint16_t wait = 1500 * (MOTOR_NUMBER - 1);
   HAL_Delay(wait);
@@ -230,7 +233,6 @@ int main(void)
   HAL_COMP_Start(&hcomp4);
 
 //########### Initialization #############
-  init_task();
   init_motor_task();
 //########################
 
@@ -959,7 +961,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 0;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 63999;
+  htim4.Init.Period = 65535;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   sConfig.EncoderMode = TIM_ENCODERMODE_TI12;

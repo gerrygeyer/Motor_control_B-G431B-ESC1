@@ -15,7 +15,7 @@
 #include "foc_math.h"
 #include "current_measurement.h"
 #include "observer.h"
-#include "task.h"
+
 
 extern DMA_HandleTypeDef hdma_adc2;
 extern ADC_HandleTypeDef hadc1;

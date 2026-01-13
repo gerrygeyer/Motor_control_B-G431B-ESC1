@@ -12,14 +12,13 @@
 #include <stdint.h>
 
 
-
+uint16_t safety_counter = 0;
 /*
  *  a function that stops the motor if the connection is lost
  *  for a certain period of time
  */
 void automatic_motor_switch_off(Motor* m){
     if(AUTOMATIC_SWITCH_OFF == OFF) return;
-    static uint16_t safety_counter = 0;
     static uint16_t max_count = (uint16_t)(LOSE_CONNECTION_TIME * (float)FOC_FREQUENCY/ (float)LOW_FREQUENCY_DIVIDER);
         if(safety_counter > max_count){
         // Stop the motor
@@ -29,6 +28,10 @@ void automatic_motor_switch_off(Motor* m){
     safety_counter += 1;
 }
 
+void recive_motor_command(void){
+    // Reset the safety counter when a valid command is received
+    safety_counter = 0;
+}
 
 /*
  * A function that blocks going into GOTOSTART state for a certain time
@@ -76,4 +79,15 @@ static void PWM_All_Start(void)
 
 void motor_safety_stop_motor(void){
     PWM_All_Stop();
+}
+
+
+
+
+void motor_check_parameter(TIM_HandleTypeDef *htim){
+    int64_t data = ENCODER_PULS_PER_REVOLUTION * 16;
+    if(htim->Init.Period != (uint32_t)(data - 1)){
+        // Error: wrong timer period for encoder
+        Error_Handler();
+    }
 }

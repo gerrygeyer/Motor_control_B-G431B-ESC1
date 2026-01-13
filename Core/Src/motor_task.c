@@ -4,7 +4,6 @@
  */
 #include "motor_types.h"
 #include "motor_safety.h"
-#include "task.h"
 #include "motor_task.h"
 #include "current_measurement.h"
 #include "main.h"
@@ -41,6 +40,8 @@ void motor_time_management(void)
     static uint16_t middlespeed_task_counter = 0;
     static uint16_t lowspeed_task_counter = 0;
 
+    calc_speed_and_position();
+
     highspeed_motor_task(&g_motor);
 
 
@@ -67,6 +68,8 @@ void motor_time_management(void)
 
 static void highspeed_motor_task(Motor *m)
 {
+    get_el_angle(&foc_values);
+
     switch (m->state)
     {
         svm_output pwm_output;
@@ -111,8 +114,8 @@ static void highspeed_motor_task(Motor *m)
                 break;
             }
             dq_t V = {0,0};
-            V.d = (GOTOSTART_Q_VOLTAGE / (float)MAX_VOLTAGE); // *2.0f
-            V.q = 0.0f;
+            V.d = CLAMP((int32_t)(GOTOSTART_Q_VOLTAGE * (float)Q15 / (float)MAX_VOLTAGE),0,(Q14)); // *2.0f // CLAMOP to Q14 to be sure that we dont overrun
+            V.q = 0;
             static uint16_t gotostart_counter = 0;
             if(gotostart_counter < 5000){
                 if(gotostart_counter < 4000){
@@ -159,7 +162,7 @@ static void middlespeed_motor_task(Motor *m)
 {
     speed_calculation(&foc_values);
     pi_speed_q15(foc_values.speed,m->speed_ref,&foc_values);
-    automatic_switch_off();
+    automatic_motor_switch_off(m);
 	data_log_speed_current_500Hz(&foc_values, (uint8_t)m->state); // Send data back via UART (Optional)
 }
 

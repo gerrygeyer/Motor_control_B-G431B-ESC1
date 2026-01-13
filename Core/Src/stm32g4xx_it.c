@@ -22,7 +22,7 @@
 #include "stm32g4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <task.h>
+#include <motor_task.h>
 #include <encoder.h>
 #include <current_measurement.h>
 #include <svm.h>
@@ -267,7 +267,7 @@ void ADC1_2_IRQHandler(void)
 	    adc1_ready = 0;
 	    adc2_ready = 0;
 
-	    time_management();
+	    motor_time_management();
 
 	  }
 //	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 0);
@@ -356,7 +356,7 @@ void DMA2_Channel1_IRQHandler(void)
 void COMP1_2_3_IRQHandler(void)
 {
   /* USER CODE BEGIN COMP1_2_3_IRQn 0 */
-	engine_stopp_function();
+	// engine_stopp_function();
 	Error_Handler();
   /* USER CODE END COMP1_2_3_IRQn 0 */
   HAL_COMP_IRQHandler(&hcomp1);
@@ -372,7 +372,7 @@ void COMP1_2_3_IRQHandler(void)
 void COMP4_IRQHandler(void)
 {
   /* USER CODE BEGIN COMP4_IRQn 0 */
-	engine_stopp_function();
+	// engine_stopp_function();
 	Error_Handler();
   /* USER CODE END COMP4_IRQn 0 */
   HAL_COMP_IRQHandler(&hcomp4);

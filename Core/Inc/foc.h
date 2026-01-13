@@ -5,7 +5,6 @@
  *      Author: Gerry Geyer
  */
 
-#include <task.h>
 #include "parameter.h"
 #include <stdint.h>
 

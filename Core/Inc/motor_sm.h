@@ -13,6 +13,7 @@ void MTR_Stop(Motor* m);
 void MTR_RunClosedLoop(Motor* m);
 void MTR_RunOpenLoop(Motor* m);
 void MTR_GotoStart(Motor* m);
+void MTR_ParameterId(Motor* m);
 void MTR_Fault(Motor* m);
 
 void MotorSM_Init(Motor* m);

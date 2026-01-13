@@ -16,6 +16,7 @@ typedef enum {
     ST_CLOSEDLOOP,
     ST_OPENLOOP,
     ST_GOTOSTART,
+    ST_PARAMETER_ID,
     ST_FAULT,
     ST_MAX
 } MotorState;
@@ -27,6 +28,24 @@ typedef enum {
     FAST_GOTOSTART,      // Startsequenz
     FAST_SENSORLESS      // placeholder
 } motor_fast_mode_t;
+
+typedef enum {
+    PIDM_IDLE = 0,
+    PIDM_START,
+    PIDM_EST_R,
+    PIDM_EST_L,
+    PIDM_EST_J,
+    PIDM_DONE,
+    PIDM_ERROR
+} motor_pidm_state_t;
+
+typedef struct {
+    float Rs_ohm;
+    float Ls_h;
+    float J_kgm2;
+    bool  valid;
+} motor_param_result_t;
+
 
 typedef enum {
     POS_ENCODER = 0,
@@ -43,8 +62,17 @@ typedef struct {
     volatile MotorState state;
     volatile int16_t speed_ref;
 
-    volatile position_information_t position_info;  // Quelle
-    motor_state_est_t est;                          // Werte (nicht unbedingt volatile, s.u.)
+    volatile position_information_t position_info;  
+    motor_state_est_t est;                          
+
+    volatile motor_fast_mode_t fast_mode;          // Fast-loop dispatch (20 kHz)
+
+    /* Parameter-ID (nested SM) control + results */
+    volatile motor_pidm_state_t pidm_state;
+    volatile bool pidm_start_request_flag;         // set by Service/command layer
+    volatile bool pidm_abort_request_flag;         // optional abort
+    motor_param_result_t pidm_result;
+
 
     volatile bool gotostart_finish_flag;
     volatile bool stop_request_flag;

@@ -46,3 +46,34 @@ void safety_gotostart_blocker(Motor* m){
         blocker_counter = 0;
     }
 }
+
+static void PWM_All_Stop(void)
+{
+    // Hauptkanäle stoppen
+    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_3);
+
+    // Komplementärkanäle stoppen
+    HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_1);
+    HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_2);
+    HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3);
+}
+
+static void PWM_All_Start(void)
+{
+	if(MOTOR_DECOUPLE_CURRENT == OFF) return;
+    // Hauptkanäle starten
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+
+    // Komplementärkanäle starten
+    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+}
+
+void motor_safety_stop_motor(void){
+    PWM_All_Stop();
+}

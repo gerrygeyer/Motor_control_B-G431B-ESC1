@@ -130,11 +130,19 @@ static void highspeed_motor_task(Motor *m)
                 m->gotostart_finish_flag = true;
             }
             break;
+        case ST_PARAMETER_ID:
+            // Handle fault state
+            TIM1->CCR1 = 0;
+			TIM1->CCR2 = 0;
+			TIM1->CCR3 = 0;
+            break;
         case ST_FAULT:
             // Handle fault state
             TIM1->CCR1 = 0;
 			TIM1->CCR2 = 0;
 			TIM1->CCR3 = 0;
+
+            motor_safety_stop_motor();
             break;
         default:
             reset_pi_integrator();
@@ -142,6 +150,7 @@ static void highspeed_motor_task(Motor *m)
             TIM1->CCR1 = 0;
 			TIM1->CCR2 = 0;
 			TIM1->CCR3 = 0;
+            motor_safety_stop_motor();
             break;
     }
 }
@@ -176,4 +185,12 @@ static void lowspeed_motor_task(Motor *m)
     // Implement lowspeed task logic here
     // e.g., position control, etc.
 
+}
+
+
+
+void fault_motor_task(Motor *m)
+{
+    m->state = ST_FAULT;
+    m->speed_ref = 0;
 }

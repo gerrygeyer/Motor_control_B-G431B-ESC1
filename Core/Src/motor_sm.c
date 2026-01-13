@@ -97,6 +97,7 @@ static void State_ClosedLoop(SM_StateMachine* self, void* eventData);
 static void State_OpenLoop(SM_StateMachine* self, void* eventData);
 static void State_GotoStart(SM_StateMachine* self, void* eventData);
 static void State_Fault(SM_StateMachine* self, void* eventData);
+static void State_ParameterId(SM_StateMachine* self, void* eventData);
 
 /* ======== State-Map ======== */
 static const SM_StateStruct MotorStateMap[ST_MAX] = {
@@ -104,6 +105,7 @@ static const SM_StateStruct MotorStateMap[ST_MAX] = {
     [ST_CLOSEDLOOP] = { State_ClosedLoop },
     [ST_OPENLOOP]   = { .fn = State_OpenLoop },
     [ST_GOTOSTART]  = { .fn = State_GotoStart },
+    [ST_PARAMETER_ID]= { .fn = State_ParameterId },
     [ST_FAULT]      = { .fn = State_Fault }
 };
 
@@ -138,6 +140,7 @@ void MTR_Stop(Motor* m)
         [ST_CLOSEDLOOP]= ST_STOP,
         [ST_OPENLOOP]  = ST_STOP,
         [ST_GOTOSTART] = ST_STOP,
+        [ST_PARAMETER_ID] = ST_STOP,
         [ST_FAULT]     = CANNOT_HAPPEN
     };
 
@@ -154,6 +157,7 @@ void MTR_RunClosedLoop(Motor* m)
         [ST_CLOSEDLOOP]= EVENT_IGNORED,
         [ST_OPENLOOP]  = ST_CLOSEDLOOP,
         [ST_GOTOSTART] = EVENT_IGNORED,
+        [ST_PARAMETER_ID] = EVENT_IGNORED,
         [ST_FAULT]     = CANNOT_HAPPEN
     };
 
@@ -169,6 +173,7 @@ void MTR_RunOpenLoop(Motor* m)
         [ST_CLOSEDLOOP]= ST_OPENLOOP,
         [ST_OPENLOOP]  = EVENT_IGNORED,
         [ST_GOTOSTART] = EVENT_IGNORED,
+        [ST_PARAMETER_ID] = EVENT_IGNORED,
         [ST_FAULT]     = CANNOT_HAPPEN
     };
 
@@ -185,9 +190,27 @@ void MTR_GotoStart(Motor* m)
         [ST_STOP]      = ST_GOTOSTART,
         [ST_CLOSEDLOOP]= EVENT_IGNORED,
         [ST_OPENLOOP]  = EVENT_IGNORED,
-        [ST_GOTOSTART] = EVENT_IGNORED,
+        [ST_GOTOSTART] = EVENT_IGNORED, 
+        [ST_PARAMETER_ID] = EVENT_IGNORED,
         [ST_FAULT]     = CANNOT_HAPPEN
     };
+    uint8_t next = TRANSITIONS[sm.currentState];
+    SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, next, NULL);
+}
+
+
+void MTR_ParameterId(Motor* m)
+{
+    (void)m;
+    static const uint8_t TRANSITIONS[ST_MAX] = {
+        [ST_STOP]      = ST_PARAMETER_ID,
+        [ST_CLOSEDLOOP]= EVENT_IGNORED,
+        [ST_OPENLOOP]  = EVENT_IGNORED,
+        [ST_GOTOSTART] = EVENT_IGNORED,
+        [ST_PARAMETER_ID] = EVENT_IGNORED,
+        [ST_FAULT]     = CANNOT_HAPPEN
+    };
+
     uint8_t next = TRANSITIONS[sm.currentState];
     SM_ExternalEvent(&sm, MotorStateMap, ST_MAX, next, NULL);
 }
@@ -200,6 +223,7 @@ void MTR_Fault(Motor* m)
         [ST_CLOSEDLOOP]= ST_FAULT,
         [ST_OPENLOOP]  = ST_FAULT,
         [ST_GOTOSTART] = ST_FAULT,
+        [ST_PARAMETER_ID] = ST_FAULT,
         [ST_FAULT]     = EVENT_IGNORED
     };
 
@@ -222,11 +246,6 @@ static void State_ClosedLoop(SM_StateMachine* self, void* eventData)
 {
     Motor* m = SM_GetMotor();
     m->state = ST_CLOSEDLOOP;
-
-    if (eventData) {
-        const RpmData* d = (const RpmData*)eventData;
-        m->speed_ref = d->rpm;
-    }
 }
 
 static void State_OpenLoop(SM_StateMachine* self, void* eventData)
@@ -234,10 +253,6 @@ static void State_OpenLoop(SM_StateMachine* self, void* eventData)
     Motor* m = SM_GetMotor();
     m->state = ST_OPENLOOP;
 
-    if (eventData) {
-        const RpmData* d = (const RpmData*)eventData;
-        m->speed_ref = d->rpm;
-    }
 }
 
 static void State_GotoStart(SM_StateMachine* self, void* eventData)
@@ -247,12 +262,20 @@ static void State_GotoStart(SM_StateMachine* self, void* eventData)
     m->state = ST_GOTOSTART;
 }
 
+static void State_ParameterId(SM_StateMachine* self, void* eventData)
+{
+    (void)eventData;
+    Motor* m = SM_GetMotor();
+    m->state = ST_PARAMETER_ID;
+
+    /* TODO: Parameter-ID-Mode initialisieren / gewünschte Aktion starten */
+}
+
 static void State_Fault(SM_StateMachine* self, void* eventData)
 {
     (void)eventData;
     Motor* m = SM_GetMotor();
     m->state = ST_FAULT;
-
     m->speed_ref = 0;
 }
 

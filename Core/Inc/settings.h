@@ -15,9 +15,6 @@
 // ####### SAFTY SETTINGS ####################
 #define AUTOMATIC_SWITCH_OFF			OFF		// stop the motor if loosing connection to master (deactivate for debug)
 #define MOTOR_DECOUPLE_CURRENT			OFF		// decouples the motor from current. OFF => the motor stopp if the system go to STOP state
-// ####### ONLINE TUNING #####################
-#define PI_TUNING_MODE 					ON
-
 // ####### CURRENT CONTROL SETTINGS ##########
 #define ANTI_WINDUP						ON
 

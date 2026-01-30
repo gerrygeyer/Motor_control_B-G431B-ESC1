@@ -52,6 +52,8 @@
 
 #define PMSM_PHI		(PMSM_KE * 60)/(PMSM_POLEPAIR);//
 
+#define MODULATION_INDEX_SPACE_VEC		0.866f // 0.866 for SVM
+#define MODULATION_INDEX_SINUS			0.785f // 0.707 for
 
 // ################## CONTROL PARAMETER ##################
 /*

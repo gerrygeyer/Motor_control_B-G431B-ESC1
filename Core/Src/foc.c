@@ -47,16 +47,8 @@ float debug_current_Iq;
 // init function
 void init_foc(FOC_HandleTypeDef *pHandle){
 
-	Vdq_q15.d			= 0;
 	Vdq_q15.q			= 0;
-
-	Vdq_openloop.d		= 0.0f;
-	Vdq_openloop.q		= OPENLOOP_VOLTAGE;
 	Vdq_q15.d = (Q15 >>8);
-
-	pHandle->v_circle.d	= 3.0f;	// not 0 please
-	pHandle->v_circle.q	= 3.0f;
-
 
 }
 
@@ -89,7 +81,7 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, float Iq){
 
 	break;
 
-	default:
+	default: // FOC_CLOSELOOP
 
 		theta = pHandle_foc->theta;
 		Idq_set_q15.d = 0;
@@ -366,29 +358,7 @@ static dq_t error_fct(dq_t ref, dq_t val){
 	return (Output);
 }
 
-/**
- * @brief       Converts a floating-point current value to Q15 fixed-point format.
- *
- * @details     Scales the input current `i` by Q15 and right-shifts the result
- *              to adjust for the system's configured maximum current range.
- *              The result is clamped to the int16_t range.
- *
- * @param       i       Input current in floating-point (amperes).
- *
- * @return      Current in Q15 fixed-point format (int16_t).
- *
- * @note        The right-shift by `DIV_MAX_CURRENT_Q15` adapts the result to
- *              the expected current normalization.
- *
- * @see         Q15, CLAMP_INT32_TO_INT16
- */
-static inline int16_t transform_current_to_Q15(float i){
-	int32_t x;
-	x = (int32_t)(i * (float)Q15);
-	x = (x >> DIV_MAX_CURRENT_Q15);
 
-	return CLAMP_INT32_TO_INT16(x);
-}
 
 
 static dq_t iir_current_dq_filter_q15(dq_t i){
@@ -401,7 +371,7 @@ static dq_t iir_current_dq_filter_q15(dq_t i){
 
 
 
-#define MEDIAN_WIN 8 // Fenstergröße 3, anpassbar
+#define MEDIAN_WIN 8 
 
 // Hilfsfunktion zum Sortieren eines kleinen Arrays
 static void sort_int16(int16_t *v, uint8_t len){

@@ -5,16 +5,14 @@
  *      Author: Gerry Geyer
  *
  *
- *      https://deepbluembedded.com/stm32-adc-multi-channel-scan-dma-poll-single-conversion/
- *
- *
  */
- #include <stdio.h>
+#include <stdint.h>
+#include <stdio.h>
 #include "main.h"
 #include "parameter.h"
 #include "foc_math.h"
 #include "current_measurement.h"
-#include "observer.h"
+
 
 
 extern DMA_HandleTypeDef hdma_adc2;
@@ -25,46 +23,23 @@ uint32_t adc_buffer_voltage;
 int16_t adc_value;
 
 
-abi32_t current_value_t,current_value_dc_t;
+abi32_t current_value_t;
 abi32_t debug_current_after_dc;
 
 
 
-ab_f dc_value, lp_z_memory, current_debug_f;
+ab_f dc_value;
 
 
 ab_f cur_val_dc;
-ab16_t offset;
-int16_t cur_lp_a;
-ab16_t I_buffer;
-
-uint16_t offset_counter;
-ab32_t offset_val;
 
 abi32_t debug_current, debug_current_raw;
-int16_t IIR_DC_FILTER_A;
 float IIR_DC_Filter_f, ONE_MINUS_IIR_DC_Filter_f;
 
 
 
 
 void init_current_measurement(void){
-
-	offset_counter = 0;
-
-
-	I_buffer.a = 0;
-	I_buffer.b = 0;
-
-	lp_z_memory.a = 0.0;
-	lp_z_memory.b = 0.0;
-
-	adc_value = 0;
-	adc_buffer_voltage = 0;
-
-	IIR_DC_FILTER_A = (int16_t)((2.0f * (float)IIR_ZERO_A * (float)Q15) + 0.5f);
-	IIR_DC_Filter_f = IIR_ZERO_A;
-	ONE_MINUS_IIR_DC_Filter_f = (1.0f - IIR_ZERO_A);
 
 }
 
@@ -85,16 +60,16 @@ void execute_current_measurement(void){
 	current_value_t.a = -((int32_t)I.a - fixed_offset);
 	current_value_t.b = -((int32_t)I.b - fixed_offset);
 
+	// Convert to Q15 current value -> gain compensation from circuit and resqale to Q15 (max current 32A [Q5])
 	current_value_t.a = debug_current.a = ((int32_t)current_value_t.a * (int32_t)COUNT_TO_AMP_t) >> DIV_MAX_CURRENT_Q15;	// multiplicate with 0.02822876 * 2^15
 	current_value_t.b = debug_current.b = ((int32_t)current_value_t.b * (int32_t)COUNT_TO_AMP_t) >> DIV_MAX_CURRENT_Q15;
 
 	/*
+	 * DC removal with IIR-Filter (float point unit) [in fixed point we need 64 bit precision for good results]
 	 * info:
 	 * IIR_DC_FILTER_A = (int16_t)((float)(IIR_ZERO_A * (float)UINT16_MAX_VALUE));
 	 * #define IIR_ZERO_A			((PI_MULTIPLY_2 * FOC_TS * 1.0f)/(PI_MULTIPLY_2 * FOC_TS * 1.0f + 1.0f))
 	 */
-
-
 
 	dc_value.a = IIR_DC_Filter_f * (float)current_value_t.a + ONE_MINUS_IIR_DC_Filter_f * cur_val_dc.a;
 	dc_value.b = IIR_DC_Filter_f * (float)current_value_t.b + ONE_MINUS_IIR_DC_Filter_f * cur_val_dc.b;
@@ -103,14 +78,14 @@ void execute_current_measurement(void){
 	cur_val_dc.b = dc_value.b;
 
 
-	current_value_t.a -= CLAMP_INT32_TO_INT16((int32_t)(cur_val_dc.a + 0.5f));
+	current_value_t.a -= CLAMP_INT32_TO_INT16((int32_t)(cur_val_dc.a + 0.5f)); // +0.5 for correct fixed point rounding
 	current_value_t.b -= CLAMP_INT32_TO_INT16((int32_t)(cur_val_dc.b + 0.5f));
 	debug_current_after_dc.a = current_value_t.a;
 	debug_current_after_dc.b = current_value_t.b;
 
 	/*
 	 * IIR-Filter with fixed parameter:
-	 * 5500RPM max speed -> 5500 * (polepair/60) Hz
+	 * 5500RPM max speed -> 5500 * (polepair/60) Hz // (polepair = 7)
 	 *
 	 *
 	 * a =  0.1678 -> a_q15 = 5497
@@ -118,16 +93,18 @@ void execute_current_measurement(void){
 	 *
 	 */
 
+	 const int16_t a_q15 = 5497;
+	 const int16_t one_minus_a_q15 = 27271;
 
 	int32_t x,y, out;
-	x = (5497 * current_value_t.a);
-	y = (27271 * cur_last_val.a);
+	x = (a_q15 * current_value_t.a);
+	y = (one_minus_a_q15 * cur_last_val.a);
 	out = (x + y + (1 << 14)) >> 15;
 	current_value_t.a = CLAMP_INT32_TO_INT16(out);
 	cur_last_val.a = current_value_t.a;
 
-	x = (5497 * current_value_t.b);
-	y = (27271 * cur_last_val.b);
+	x = (a_q15 * current_value_t.b);
+	y = (one_minus_a_q15 * cur_last_val.b);
 	out = (x + y + (1 << 14)) >> 15;
 	current_value_t.b = CLAMP_INT32_TO_INT16(out);
 	cur_last_val.b = current_value_t.b;
@@ -158,15 +135,7 @@ void read_voltage_value(FOC_HandleTypeDef *pHandle_foc){
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-//	int32_t x = (int32_t)adc_buffer * 404423;
-//	x /= 11796;
-//	uint32_t x = (int32_t)adc_buffer_voltage * Battery_Voltage_Factor_Q7; // Q12 + Q7 = Q19
-//
-////	x = (x >> 5); // Divide with max Voltage (= V_max = 32V) (Q19)
-////	x = (x >> 4); // Scale back to Q15
-//	// simplify:
-//	x = (x >> 9);
-//
+
 	uint32_t x = (int32_t)adc_buffer_voltage * BAT_VOLT32_Q25; // Q12 + Q7 = Q19
 
 //	x = (x >> 5); // Divide with max Voltage (= V_max = 32V) (Q19)

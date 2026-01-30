@@ -31,7 +31,7 @@ void init_motor_task(void)
     init_current_measurement();
     init_encoder();
     init_communication();
-    init_math();
+
 }
 
 
@@ -40,7 +40,7 @@ void motor_time_management(void)
     static uint16_t middlespeed_task_counter = 0;
     static uint16_t lowspeed_task_counter = 0;
 
-    calc_speed_and_position();
+    calc_rotor_position();
 
     highspeed_motor_task(&g_motor);
 

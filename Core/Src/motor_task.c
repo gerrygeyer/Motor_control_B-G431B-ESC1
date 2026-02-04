@@ -25,8 +25,6 @@ static void oneHz_motor_task(Motor *m);
 
 FOC_HandleTypeDef foc_values;
 
-ab_t gotostart_current = {0,0};
-
 void init_motor_task(void)
 {
     init_foc(&foc_values);
@@ -44,7 +42,7 @@ void motor_time_management(void)
     static uint16_t middlespeed_task_counter = 2;
     static uint16_t lowspeed_task_counter = 1;
     static uint16_t oneHz_task_counter = 0;
-    
+
     // Highspeed task
     highspeed_motor_task(&g_motor);
 
@@ -134,9 +132,6 @@ static void highspeed_motor_task(Motor *m)
             if(gotostart_counter < 10000){
                 if(gotostart_counter < 9000){
                     set_encoder_to_zero(&foc_values);
-                }
-                if(gotostart_counter > 5000 && gotostart_counter < 9000){
-                   gotostart_current = foc_values.I_ab_q15;	
                 }
                     pwm_output = goto_position(V);
                     // set_encoder_to_zero(&foc_values);

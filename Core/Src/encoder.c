@@ -18,7 +18,6 @@ static int16_t iir_lp_speed_q15(int16_t val);
 uint16_t encoder_count;// speed_lp_buffer;
 uint32_t count_to_angle; // pre-calc
 
-uint32_t encoder_count_large;
 int32_t rotor_position = 0;
 
 
@@ -42,9 +41,10 @@ void set_encoder_to_zero(FOC_HandleTypeDef *pHandle_foc){
  * But we have to rescale for the position information.
  *
  */
-void calc_rotor_position(void){
+void calc_rotor_position(FOC_HandleTypeDef *pHandle_foc){
 
-	encoder_count = encoder_count_large = __HAL_TIM_GET_COUNTER(&htim4);
+	uint32_t encoder_count_large;
+	uint16_t encoder_count = encoder_count_large = __HAL_TIM_GET_COUNTER(&htim4);
 	uint16_t rotation = encoder_count/ENCODER_PULS_PER_REVOLUTION;
 	encoder_count = encoder_count - (rotation * ENCODER_PULS_PER_REVOLUTION);
 	// now we have the real encoder count within one revolution
@@ -56,15 +56,9 @@ void calc_rotor_position(void){
 
 	// ############## TRANSFORM TO ELECTRICAL ANGLE #################
 	uint16_t encoder_count_uint = (encoder_count * count_to_angle); 
-	encoder_count = (uint16_t)encoder_count_uint;
-
+	pHandle_foc->theta = (uint16_t)encoder_count_uint;
 }
 
-
-int16_t get_el_angle(FOC_HandleTypeDef *pHandle_foc){
-	pHandle_foc->theta = encoder_count;
-	return encoder_count;
-}
 
 int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc){
 

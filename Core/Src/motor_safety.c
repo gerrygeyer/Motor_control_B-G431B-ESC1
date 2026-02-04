@@ -98,26 +98,3 @@ void motor_check_parameter(TIM_HandleTypeDef *htim){
     // Future Work : check other parameters
 
 }
-
-
-
-
-const uint16_t r_lut[16] = {
-  5825, 
-  3362, 
-  2017, 
-  1254, 
-   804, 
-   530, 
-   359, 
-   249, 
-   176, 
-   127, 
-    93, 
-    70, 
-    53, 
-    41, 
-    32, 
-    25
-
-};

@@ -100,6 +100,11 @@
 #define KI_SPEED			(((KP_SPEED ) * BANDWIDTH_SPEED * DIVISION_M)/(CUTOFFF_FREQU_DIV * FOC_FREQUENCY))
 
 
+// ################ SAFETY VALUES #####################
+
+#define OVER_TEMPERATURE_VALUE		100 // °C
+#define OVER_VOLTAGE_VALUE			25 // V
+
 // ############### OTHER ###############################
 
 #define GOTOSTART_Q_VOLTAGE	2.0f // V

@@ -13,11 +13,12 @@
 #include "motor_events.h"
 
 /* External event flags */
-extern volatile bool oc_trip;
-extern volatile bool btn_stop_edge;
-extern volatile bool btn_closed_edge;
-extern volatile bool btn_open_edge;
-extern volatile bool btn_gotostart_edge;
+// extern volatile bool oc_trip;
+// extern volatile bool ot_trip;
+// extern volatile bool btn_stop_edge;
+// extern volatile bool btn_closed_edge;
+// extern volatile bool btn_open_edge;
+// extern volatile bool btn_gotostart_edge;
 
 /* ======== Mini SM Kernel  ======== */
 typedef struct SM_StateMachine SM_StateMachine;
@@ -282,6 +283,10 @@ static void State_Fault(SM_StateMachine* self, void* eventData)
 
 void MotorSM_Service(Motor* m)
 {
+    if (oc_trip || ot_trip || ov_trip) {
+        MTR_Fault(m);
+        return;
+    }
     if(m->stop_request_flag){
         m->stop_request_flag = false;
         m->start_request_flag = false;
@@ -295,10 +300,6 @@ void MotorSM_Service(Motor* m)
     if(m->gotostart_finish_flag){
         // m->gotostart_finish_flag = false; <-- do not reset here
         MTR_Stop(m);
-    }
-    if (oc_trip) {
-        oc_trip = false;
-        MTR_Fault(m);
     }
 
     if (btn_stop_edge) {

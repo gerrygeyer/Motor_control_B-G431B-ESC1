@@ -20,8 +20,7 @@
 
 
 void init_encoder(void);
-int16_t get_el_angle(FOC_HandleTypeDef *pHandle_foc);
 void set_encoder_to_zero(FOC_HandleTypeDef *pHandle_foc);
-void calc_rotor_position(void);
+void calc_rotor_position(FOC_HandleTypeDef *pHandle_foc);
 int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc);
 #endif /* INC_ENCODER_H_ */

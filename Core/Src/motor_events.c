@@ -2,6 +2,8 @@
 #include <stdbool.h>
 /* Faults */
 volatile bool oc_trip = false;
+volatile bool ot_trip = false;
+volatile bool ov_trip = false;
 
 /* User Inputs */
 volatile bool btn_stop_edge      = false;

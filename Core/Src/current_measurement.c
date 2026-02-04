@@ -12,6 +12,7 @@
 #include "parameter.h"
 #include "foc_math.h"
 #include "current_measurement.h"
+#include "motor_events.h"
 
 
 
@@ -19,22 +20,27 @@ extern DMA_HandleTypeDef hdma_adc2;
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 
-uint32_t adc_buffer_voltage = 0, adc_buffer_temperature = 0;
-int16_t adc_value, temperature_value;
+static void ntc_lut_init(void);
 
+uint32_t adc_buffer_voltage = 0, adc_buffer_temperature = 0;
 
 abi32_t current_value_t;
-abi32_t debug_current_after_dc;
 
 
 abi32_t debug_current, debug_current_raw;
 float IIR_DC_Filter_f, ONE_MINUS_IIR_DC_Filter_f;
 
-
+int16_t max_voltage_value_q15;
 
 
 void init_current_measurement(void){
 
+	if(OVER_VOLTAGE_VALUE >= 32 || OVER_VOLTAGE_VALUE <= 0){
+		max_voltage_value_q15 = 32767;
+	}else{
+		max_voltage_value_q15 = (int16_t)((float)OVER_VOLTAGE_VALUE * 32768.0f / 32.0f); 
+	}
+	ntc_lut_init();
 }
 
 
@@ -82,8 +88,6 @@ void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState m
 
 		current_value_t.a -= CLAMP_INT32_TO_INT16((int32_t)(cur_val_dc.a + 0.5f)); // +0.5 for correct fixed point rounding
 		current_value_t.b -= CLAMP_INT32_TO_INT16((int32_t)(cur_val_dc.b + 0.5f));
-		debug_current_after_dc.a = current_value_t.a;
-		debug_current_after_dc.b = current_value_t.b;
 
 
 	/*
@@ -115,9 +119,28 @@ void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState m
 	pHandle_foc->I_ab_q15.a = CLAMP_INT32_TO_INT16(current_value_t.a);
 	pHandle_foc->I_ab_q15.b = CLAMP_INT32_TO_INT16(current_value_t.b);
 
+	// over current protection
+
 }
+// ############# VOLTAGE AND TEMPERATURE MEASUREMENT #############
+/**
+ * NTC temperature estimation using an ADC lookup table.
+ *
+ * The ADC raw value of an NTC voltage divider is converted to an approximate
+ * temperature in °C. A precomputed lookup table defines ADC values for
+ * temperature points from −10 °C to +140 °C in 10 °C steps.
+ *
+ * At runtime, the code selects the corresponding LUT segment and performs
+ * linear interpolation. To minimize CPU load, the interpolation gain is
+ * precomputed in Q15 fixed-point format, avoiding divisions and floating-
+ * point operations.
+ *
+ * The returned value is an integer temperature in degrees Celsius.
+ * Accuracy is sufficient for over-temperature detection and protection,
+ * not for precise temperature measurement.
+ */
 
-
+int16_t adc_value, temperature_value;
 
 void execute_voltage_measurement(void){
 	HAL_ADC_Start_DMA(&hadc2, &adc_buffer_voltage, 1);
@@ -157,34 +180,44 @@ const uint16_t adc_lut_raw[16] = {
 };
 
 
+static uint16_t k_q15[15]; // k_q15[i] = (10<<15)/(a2-a1)
 
-// get temperature in degree celsius from adc raw value with interpolation
-static int16_t adc_to_temp(uint16_t adc_raw) {
-  uint8_t low = 0, high = 15;
-  
-  while(low < high) {
-    uint8_t mid = low + (high - low) / 2;
-    if(adc_raw >= adc_lut_raw[mid]) {
-      low = mid + 1;
-    } else {
-      high = mid;
+static void ntc_lut_init(void)
+{
+    for (int i = 0; i < 15; i++) {
+        uint32_t den = (uint32_t)(adc_lut_raw[i+1] - adc_lut_raw[i]);
+        k_q15[i] = (uint16_t)(((uint32_t)10 << 15) / den);
     }
-  }
-  uint8_t i = low - 1; 
-  
-  // Interpolation
-  int16_t temp = i * 10;
-  if(i < 15) {
-    uint32_t a1 = adc_lut_raw[i], a2 = adc_lut_raw[i+1];
-    temp += 10 * (adc_raw - a1) / (a2 - a1);
-  }
-  return temp;
 }
+
+static inline int16_t adc_to_temp_q15(uint16_t adc_raw)
+{
+    const int16_t T0 = -10;
+
+    if (adc_raw <= adc_lut_raw[0])  return T0;
+    if (adc_raw >= adc_lut_raw[15]) return (int16_t)(T0 + 150);
+
+    uint8_t i = 0;
+    while (adc_raw >= adc_lut_raw[i+1]) i++;
+
+    uint16_t a1 = adc_lut_raw[i];
+    uint16_t dx = (uint16_t)(adc_raw - a1);
+
+    // deltaT = (dx * k_q15[i]) >> 15   (entspricht 10*dx/(a2-a1))
+    int16_t dT = (int16_t)(((int32_t)dx * (int32_t)k_q15[i]) >> 15);
+
+    return (int16_t)(T0 + 10*i + dT);
+}
+
+
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
   	if (hadc->Instance == ADC1)
     {
-        temperature_value = adc_to_temp(adc_buffer_temperature);
+        temperature_value = adc_to_temp_q15(adc_buffer_temperature);
+		if(temperature_value >= OVER_TEMPERATURE_VALUE){
+			ot_trip = true;	
+		}
     }
 	if (hadc->Instance == ADC2)
     {
@@ -195,6 +228,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		// simplify:
 		x = (x >> 10);
 		adc_value = CLAMP_INT32_TO_INT16((int32_t)x); // V = x* 32/Q15
+		if(adc_value >= max_voltage_value_q15){
+			ov_trip = true;
+		}
     }
 
 }

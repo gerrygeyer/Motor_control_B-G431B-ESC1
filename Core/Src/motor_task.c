@@ -44,11 +44,9 @@ void motor_time_management(void)
     static uint16_t middlespeed_task_counter = 2;
     static uint16_t lowspeed_task_counter = 1;
     static uint16_t oneHz_task_counter = 0;
-
-    calc_rotor_position();
     
+    // Highspeed task
     highspeed_motor_task(&g_motor);
-
 
     // Middlespeed task
     if(middlespeed_task_counter >= MIDDLE_FREQUENCY_DIVIDER){
@@ -80,7 +78,7 @@ void motor_time_management(void)
 
 static void highspeed_motor_task(Motor *m)
 {
-    get_el_angle(&foc_values);
+    calc_rotor_position(&foc_values);
 
     switch (m->state)
     {

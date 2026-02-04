@@ -84,7 +84,7 @@ The controller settings for the inner current loop are set according to the magn
 
 ## Automat
 
-![Ablaufdiagramm](Ablaufdiagramm.drawio.svg)
+![Ablaufdiagramm](./docs/picture_diagrams/Ablaufdiagramm.drawio.svg)
 
 
 
@@ -314,8 +314,12 @@ Die zyklische Service‑Funktion `MotorSM_Service` koppelt physikalische Ereigni
 ```c
 void MotorSM_Service(Motor* m)
 {
+    if (oc_trip || ot_trip || ov_trip) {
+        MTR_Fault(m);
+        return;
+    }
     if(m->stop_request_flag){
-        m->stop_request_flag  = false;
+        m->stop_request_flag = false;
         m->start_request_flag = false;
         MTR_Stop(m);
         return;
@@ -325,12 +329,7 @@ void MotorSM_Service(Motor* m)
         MTR_RunClosedLoop(m);
     }
     if(m->gotostart_finish_flag){
-        /* nicht hier zurücksetzen */
         MTR_Stop(m);
-    }
-    if (oc_trip) {
-        oc_trip = false;
-        MTR_Fault(m);
     }
 
     if (btn_stop_edge) {
@@ -365,7 +364,7 @@ Zur Erfassung der Rotorposition wird ein magnetischer Encoder vom Typ MT6701 ver
 
 Die A- und B-Signale werden mithilfe eines Hardware-Timers im Encoder-Modus ausgewertet. Abhängig von der Drehrichtung wird der Zählerstand des Timers inkrementiert oder dekrementiert. Wird die Periodendauer (Auto-Reload-Wert) des Timers auf die Auflösung des Encoders eingestellt, entspricht der aktuelle Zählerwert – bei bekanntem Startwinkel – direkt dem mechanischen Rotorwinkel.
 
-<img src="angle_representation.drawio.svg" alt="angle_representation.drawio" style="zoom:150%;" />
+<img src="./docs/picture_diagrams/angle_representation.drawio.svg" alt="angle_representation.drawio" style="zoom:150%;" />
 
 #### Winkelrepräsentation in 16-Bit-Festkommadarstellung
 
@@ -387,7 +386,7 @@ ARR = 16\cdot N_\text{enc} - 1 \approx 16\cdot 4000 - 1 = 63999
 
 Damit wird die Winkelrepräsentation „aufgespreizt“ (höhere interne Auflösung), und die Differenzbildung über den periodischen Überlauf wird deutlich unempfindlicher. In der Praxis führt das zu wesentlich saubereren Drehzahlschätzungen bei hohen Drehzahlen.
 
-<img src="Timer_to_rotations.drawio.svg" alt="Timer_to_rotations.drawio" style="zoom:150%;" />
+<img src="./docs/picture_diagrams/Timer_to_rotations.drawio.svg" alt="Timer_to_rotations.drawio" style="zoom:150%;" />
 
 
 

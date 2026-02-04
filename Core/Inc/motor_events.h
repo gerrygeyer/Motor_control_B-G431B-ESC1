@@ -5,6 +5,8 @@
 
 /* Faults */
 extern volatile bool oc_trip;
+extern volatile bool ot_trip;
+extern volatile bool ov_trip;  
 
 /* User Inputs */
 extern volatile bool btn_stop_edge;

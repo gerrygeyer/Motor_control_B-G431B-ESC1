@@ -5,7 +5,6 @@
  *      Author: Gerry Geyer
  */
 
-#include <task.h>
 #include "parameter.h"
 #include <stdint.h>
 
@@ -27,19 +26,9 @@
 #define OFF			0
 
 
-
-
-
-
 void init_foc(FOC_HandleTypeDef *pHandle_foc);
 void clear_foc(FOC_HandleTypeDef *pHandle);
-alphabeta_f clark_transformation(ab_f Input);
-dq_f park_transformation(alphabeta_f I, angle_f elec_theta);
-abc_f inverse_clark_transformation(alphabeta_f v);
-
-float PI_controller(float errorstate, uint16_t frequency, float Kp, float Ki,float limit, float old_value);
-alphabeta_f inverse_park_transformation(dq_f V, angle_f elec_theta);
-void execute_FOC(FOC_HandleTypeDef *pHandle_foc, float Iq);
+void execute_FOC(FOC_HandleTypeDef *pHandle_foc);
 
 svm_output goto_position(dq_t V);
 

@@ -42,7 +42,8 @@
 #define PMSM_J			PMSM_SYSTEM_J
 #define PMSM_KT 		((3.0f/2.0f)*((float)PMSM_POLEPAIR * PMSM_LAMBDA))	// Nm/A
 #define PMSM_DIV_KT 	738
-#define PMSM_POLEPAIR 	7
+// #define PMSM_POLEPAIR 	7
+#define PMSM_POLEPAIR 	6	// TEST
 #define PMSM_LAMBDA		0.000129f
 #define PMSM_KE			((3.0f/2.0f)*(float)PMSM_POLEPAIR*PMSM_LAMBDA) 	//Vrms/RPM
 
@@ -52,6 +53,8 @@
 
 #define PMSM_PHI		(PMSM_KE * 60)/(PMSM_POLEPAIR);//
 
+#define MODULATION_INDEX_SPACE_VEC		0.866f // 0.866 for SVM
+#define MODULATION_INDEX_SINUS			0.785f // 0.707 for
 
 // ################## CONTROL PARAMETER ##################
 /*
@@ -97,6 +100,11 @@
 #define KI_SPEED			(((KP_SPEED ) * BANDWIDTH_SPEED * DIVISION_M)/(CUTOFFF_FREQU_DIV * FOC_FREQUENCY))
 
 
+// ################ SAFETY VALUES #####################
+
+#define OVER_TEMPERATURE_VALUE		100 // °C
+#define OVER_VOLTAGE_VALUE			25 // V
+
 // ############### OTHER ###############################
 
 #define GOTOSTART_Q_VOLTAGE	2.0f // V
@@ -122,8 +130,25 @@
 
 #define OPENLOOP_VOLTAGE	(float)2.5
 
-//#define ENCODER_PULS_PER_REVOLUTION	4096
-#define ENCODER_PULS_PER_REVOLUTION	4000
+// ############ ENCODER PARAMETER ######################
+#define ENCODER_PULS_PER_REVOLUTION	4096
+// #define ENCODER_PULS_PER_REVOLUTION	4000
+
+/* 
+ *	also the right Timer Period must be set!
+ *	in CubeMX under Timer 4 settings, or directly in main.c 
+ *	inside of MX_TIM4_Init() function:
+
+*/
+/*
+static void MX_TIM4_Init(void)
+{
+...
+  htim4.Init.Period = 63999; <- (4000 * 16)-1
+  OR
+  htim4.Init.Period = 65535; <- (4096 * 16)-1
+...
+*/
 
 // ############## typedef structs ######################
 
@@ -180,20 +205,14 @@ typedef struct
 	int32_t c; /**< Variable c */
 } abc_32t;
 
-typedef struct {
-	float alpha;
-	float beta;
-}alphabeta_f;
+
 
 typedef struct {
 	int16_t alpha;
 	int16_t beta;
 }alphabeta_t;
 
-typedef struct {
-	float d;
-	float q;
-}dq_f;
+
 
 typedef struct {
 	int16_t d;
@@ -206,20 +225,13 @@ typedef struct {
 }dq_32t;
 
 
-typedef struct{
-	float sin;
-	float cos;
-}angle_f;
+
 
 typedef struct{
 	int16_t sin;
 	int16_t cos;
 }angle_t;
 
-typedef struct {
-	float ki_int;
-	float out_int;
-}pll_f;
 
 typedef struct {
 	uint32_t Sa;
@@ -230,37 +242,10 @@ typedef struct {
 
 
 typedef struct{
-	ab_f Iab;
-	alphabeta_f I_alpha_beta;
-	alphabeta_f V_alpha_beta;
-	dq_f Idq;
-	dq_f Vdq;
-	abc_f V_abc;
-	abc_f S;
-}deb_cur;
-
-typedef struct{
 	uint16_t number;
 	float toruqe;
 }command;
 
-
-typedef struct {
-	uint8_t state;
-	float v_alpha;
-	float v_beta;
-	int16_t theta;   //2pi -> -2^15 to +2^15
-	uint16_t theta_openloop;
-	uint16_t theta_observer;
-	float CurrentObserverGain;
-	int16_t speed;
-	uint16_t CutoffFreq;
-
-	alphabeta_f D_GR_eta;
-	alphabeta_f D_GR_y;
-
-
-}observer;
 
 typedef struct {
 	uint8_t state;
@@ -270,42 +255,32 @@ typedef struct {
 
 typedef struct{
 
-	float i_alpha;
-	float i_beta;
-
-	float i_a;
-	float i_b;
-
-	float i_d;
-	float i_q;
-
-	float v_alpha;
-	float v_beta;
-
-	abc_f v_abc;
 	abc_16t v_abc_t;
-	dq_f v_circle;
-
 
 	int32_t speed_ref;
 	int32_t speed;
 	int32_t speed_rad;
-	int32_t speed_rad_lp;
-	int32_t speed_mean_value;
 
 	uint16_t theta;
 	uint16_t theta_openloop;
-
-	uint16_t battery_voltage;
+	angle_t elec_theta_q15;
 	uint8_t foc_mode;
 
 	int16_t source_voltage;
+	int16_t temperature;
 
 	abc_16t V_q15;
 	int16_t Iq_value;
 	int32_t Iq_mean;
 
-	int16_t Iq_set_q15;
+	dq_t I_ref_q15;
+	ab_t I_ab_q15;
+	alphabeta_t I_alph_bet_q15;
+	dq_t I_dq_q15;
+	dq_t V_dq_q15;
+	alphabeta_t V_alph_bet_q15;
+	abc_16t V_abc_q15;
+
 	int16_t Iq_meas_q15;
 
 }FOC_HandleTypeDef;

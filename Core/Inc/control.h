@@ -7,7 +7,6 @@
 
 #ifndef INC_CONTROL_H_
 #define INC_CONTROL_H_
-#include <foc.h>
 
 //#define RESET	0
 //#define SET		1
@@ -15,10 +14,6 @@
 void init_control_functions(void);
 void clear_control_parameter(void);
 
-float PI_iq (float error, FOC_HandleTypeDef *pHandle_foc);
-float PI_id (float error, FOC_HandleTypeDef *pHandle_foc);
-float PI_speed (float speed_rad, int32_t speed_ref, FOC_HandleTypeDef *pHandle_foc);
-dq_f PI_id_iq (dq_f error, FOC_HandleTypeDef *pHandle_foc);
 void reset_pi_integrator(void);
 
 void update_PI_parameter(void);

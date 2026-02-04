@@ -36,30 +36,22 @@
 #define INT16_HALF_VALUE	0x3FFF
 #define UINT12_HALF_VALUE	0x7FF		// 2047
 
-#define IIR_PL_RAD			10000.0
-#define IIR_LP_FC			(uint32_t)(IIR_PL_RAD/(2 * 3.1415))
-#define IIR_LP_CURRENT_A 	((PI_MULTIPLY_2 * FOC_TS * IIR_LP_FC) / ((PI_MULTIPLY_2 * FOC_TS * IIR_LP_FC) + 1))
-
-#define IIR_vPL_RPM			10000	// RPM
-#define IIR_vLP_FC			((IIR_vPL_RPM * PMSM_POLEPAIR) / (60 * PI_MULTIPLY_2))
-#define IIR_vLP_CURRENT_A 	((PI_MULTIPLY_2 * FOC_TS * IIR_vLP_FC) / ((PI_MULTIPLY_2 * FOC_TS * IIR_vLP_FC) + 1))
-
-#define IIR_ZERO_A			((PI_MULTIPLY_2 * FOC_TS * 1.0f)/(PI_MULTIPLY_2 * FOC_TS * 1.0f + 1.0f))
 #define RPM_TO_RAD_S		0.104719755119660f
 
-#define Q10					1024
-#define Q11					2048
-#define Q12					4096
-#define Q13					8192
-#define Q14					16384
-#define Q15					32768
-#define Q16					65536
-#define Q18					262144
-#define Q19					524288
-#define Q20					1048576
-#define Q22					4194304
-#define Q29					536870912
-#define Q30					1073741824
+#define Q5					(32-1)
+#define Q10					(1024-1)
+#define Q11					(2048-1)
+#define Q12					(4096-1)
+#define Q13					(8192-1)
+#define Q14					(16384-1)
+#define Q15					(32768-1)
+#define Q16					(65536-1)
+#define Q18					(262144-1)
+#define Q19					(524288-1)
+#define Q20					(1048576-1)
+#define Q22					(4194304-1)
+#define Q29					(536870912-1)
+#define Q30					(1073741824-1)
 
 #define RAD2RPMQ15			3431
 #define DIV_2_SQRT3Q14		18919
@@ -72,44 +64,12 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 
-typedef struct{
-	dq_f old;
-	dq_f new;
-}memory_dq;
 
 typedef struct{
 	dq_32t old;
 	dq_32t new;
 }memory_dq_t;
 
-typedef struct{
-	alphabeta_f old;
-	alphabeta_f new;
-}memory_alpha_beta;
-
-
-void init_math(void);
-
-float getSineValue_360(int16_t y);
-float getCosValue_360(int16_t y);
-int16_t get_atan_value(int16_t d, int16_t q);
-
-dq_f circle_limiter_maxVoltage(dq_f v_12);
-dq_f IIR_LP_filter_dq(dq_f I);
-alphabeta_f IIR_LP_filter_alpha_beta(alphabeta_f I);
-alphabeta_f IIR_LP_filter_observer_alpha_beta(alphabeta_f I, float a);
-int16_t IIR_LP_filter_Speed(int16_t input);
-int16_t IIR_LP_filter_Speed_f(int16_t input);
-float limit_f(float input, float max_value);
-float eucl_norm2_approx(float x, float y);
-
-float IIR_LP_filter_Iq_set(float iq);
-float sigmoid_function_approx(float x);
-float signum_function(float x);
-int16_t atan2_approx(float y, float x);
-
-int16_t getAngle(int16_t x, int16_t y);
-void test(int16_t x, int16_t y);
 
 
 int16_t sin_t(int16_t y);

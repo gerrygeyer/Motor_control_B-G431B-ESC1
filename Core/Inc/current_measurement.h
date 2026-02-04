@@ -8,20 +8,6 @@
 #ifndef INC_CURRENT_MEASUREMENT_H_
 #define INC_CURRENT_MEASUREMENT_H_
 
-#include <foc.h>
-
-/*
- * ADC1:
- * 		CH3 			<- OAMP1
- * 		CH12 			<- OAMP3
- * 		CH1				<- VBUS
- * ADC2:
- * 		CH3				<- OAMP2
- * 		ChannelVopamp3 	<- OAMP3
- *
- */
-
-
 #define SHUNT_MEASRUEMENT_DIRECTION -1
 
 #define ADC_OFFSET_A 	2025 //0x82F  // Offset of 4096/2
@@ -93,6 +79,12 @@
 //#define VALUE_TO_VOLT	(float)0.008369954427
 
 
+typedef enum{
+	STATIONARY=0,
+	MOTOR_RUN
+}CurrMeasState;
+
+
 typedef struct {
 	uint16_t a;
 	uint16_t b;
@@ -133,20 +125,15 @@ void init_current_measurement(void);
  *  After DMA has finished, read the current measurement from the ADC and remove
  *  the DC component by substract lowpassfilter (cut. freq around 1 Hz)
  */
-void execute_current_measurement(void);
+void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState mode);
 
-/*
- * returns the current values ia ib in Q15 format
- */
-ab_t get_realCurrentQ15(void);
 /*
  * execute the ADC in regular mode to measured the battery voltage
  */
 void execute_voltage_measurement(void);
+void execute_temperature_measurement(void);
+void read_voltage_value(FOC_HandleTypeDef *pHandle_foc);
+void read_temperature_value(FOC_HandleTypeDef *pHandle_foc);
 
-/*
- * return the adc voltage
- */
-int16_t get_voltage_value(void);
 
 #endif /* INC_CURRENT_MEASUREMENT_H_ */

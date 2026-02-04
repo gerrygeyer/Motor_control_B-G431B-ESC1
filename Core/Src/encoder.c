@@ -6,61 +6,26 @@
  */
 #include <encoder.h>
 #include <main.h>
-#include <foc.h>
 #include <observer.h>
 #include <stdlib.h>
 
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim4;
+extern uint32_t operation_time_us;
 
 static int16_t iir_lp_speed_q15(int16_t val);
 
 uint16_t encoder_count;// speed_lp_buffer;
-uint16_t encoder_angle_last_value;
-uint16_t init_angle_encoder;
 uint32_t count_to_angle; // pre-calc
-
-uint32_t encoder_count_large;
-uint16_t encoder_speed_last_value;
-uint16_t iir_a_speed;
-
-int16_t speed_last_value,encoder_count_large_lv;
-uint8_t counter;
-int32_t speed_rad_memory;
-
-int16_t speed_t;
-int32_t speed_t_large;
-uint16_t encoder_count_uint, encoder_angle, encoder_debug;
-
-int16_t slow_speed_t, slow_encoder_angle, slow_encoder_angle_last_value, slow_speed_last_value;
-int16_t debug_speed_error;
-
-extern uint32_t operation_time_us;
-
-uint32_t scale_encoder_to_u16_debug;
 
 int32_t rotor_position = 0;
 
 
-float speed_iir_a = 0.7585f;
-
-
-
-
-
 void init_encoder(void){
-	init_angle_encoder = INIT_EL_ANGLE;
-	counter = 0;
-	speed_rad_memory = 0;
-	encoder_speed_last_value = 0;
-
-	iir_a_speed = 1000;
-	encoder_count_large_lv = 0;
-
 	count_to_angle = COUNT_TO_EL_ANGLE;
 }
 
-// set the encoder (timer4) to 0
+// set the encoder (timer4) to 0, needed for zero position calibration
 void set_encoder_to_zero(FOC_HandleTypeDef *pHandle_foc){
 	uint32_t counter_value;
 	counter_value = 0;
@@ -69,36 +34,31 @@ void set_encoder_to_zero(FOC_HandleTypeDef *pHandle_foc){
 
 
 /*
- * get_el_angle(): gives the angle and the speed of the Rotor.
+ * calculate the electrical angle from the rotor position.
+ * 
+ * Timer gives the position with a scale: 1 revolution from 0 to MAX_TIMER_VALUE are equal to 16 Rotations
+ * so we can use differntial calculation in Q15 to get the speed very smooth. 
+ * But we have to rescale for the position information.
+ *
  */
-void calc_speed_and_position(void){
+void calc_rotor_position(FOC_HandleTypeDef *pHandle_foc){
 
-	encoder_count = encoder_count_large = __HAL_TIM_GET_COUNTER(&htim4);
-	encoder_debug = encoder_count;
-	uint16_t virtual_rotations = encoder_count/ENCODER_PULS_PER_REVOLUTION;
-	encoder_count = encoder_count - (virtual_rotations * ENCODER_PULS_PER_REVOLUTION);
+	uint32_t encoder_count_large;
+	uint16_t encoder_count = encoder_count_large = __HAL_TIM_GET_COUNTER(&htim4);
+	uint16_t rotation = encoder_count/ENCODER_PULS_PER_REVOLUTION;
+	encoder_count = encoder_count - (rotation * ENCODER_PULS_PER_REVOLUTION);
+	// now we have the real encoder count within one revolution
 
+	// ############## TRANSFORM POSITION TO Q16 SCALE  #################
 	uint32_t x 		= encoder_count_large * (uint32_t)Q16; // Q16 = 2^16
 	x 				/= (16 * ENCODER_PULS_PER_REVOLUTION); // ENCODER_PULS_PER_REVOLUTION = 4000
-	rotor_position 	= (int32_t)x;
+	rotor_position 	= (int32_t)x;	// we need the global variable rotor_position for speed calculation
 
 	// ############## TRANSFORM TO ELECTRICAL ANGLE #################
-//	x = (encoder_count * 65536)/4000;
-//	x = (x * PMSM_POLEPAIR);
-	encoder_count_uint = (encoder_count * count_to_angle); // ((65536 * 6)/ 4000) ;
-	encoder_count = (uint16_t)encoder_count_uint;
-//	encoder_count += (uint16_t)((uint32_t)(init_angle_encoder * UINT16_MAX_VALUE)/ENCODER_PULS_PER_REVOLUTION);
-
+	uint16_t encoder_count_uint = (encoder_count * count_to_angle); 
+	pHandle_foc->theta = (uint16_t)encoder_count_uint;
 }
 
-
-int16_t get_el_angle(FOC_HandleTypeDef *pHandle_foc){
-
-
-	pHandle_foc->theta = encoder_count;
-
-	return encoder_count;
-}
 
 int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc){
 
@@ -107,9 +67,7 @@ int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc){
 	// fist: scale the encoder count to Q16 (UINT16_MAX).
 	// @note: if the encoder have 4096 steps, its not necessary.
 
-	int16_t encoder_value = (int16_t)rotor_position;
-
-	speed_t_large = (int16_t)(encoder_value - encoder_last_value_q15);
+	int32_t speed_t_large = (int16_t)((int16_t)rotor_position - encoder_last_value_q15);
 
 	speed_t_large *= (FOC_FREQUENCY/DIVISION_M); // -> rps
 	speed_t_large >>= 2; // normaly we make bitshift 16 but lets split it in two parts for protecting against overflow
@@ -117,33 +75,14 @@ int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc){
 	speed_t_large *= 60; // multiply 60 to rpm
 	speed_t_large >>= 14; // part 2 of bitshift 16
 	// save last value for next step
-//	encoder_count_large_lv = (int16_t)scale_encoder_to_u16;
-
 	encoder_last_value_q15 = (int16_t)rotor_position;
 
-
-
-
-//	int32_t speed_filter =((speed_t_large + speed_t_large_old) >> 1);
 	int32_t speed_filter =speed_t_large;
 	speed_filter = CLAMP_INT32_TO_INT16(speed_filter);
-
 	speed_filter = iir_lp_speed_q15((int16_t)speed_filter);
 
-//	float speed_filter_f = speed_iir_a * (float)speed_filter + (1.0f - speed_iir_a) * speed_iir_old;
-//	speed_iir_old = speed_filter_f;
-
-
-
-
-
-//	if(abs(speed_t_large) < 20000){
-//		pHandle_foc->speed = (int16_t)speed_filter_f;
 	pHandle_foc->speed = (int16_t)speed_filter;
-//	}
-	return (0); // <- war zu testzwecken deaktiviert
-
-
+	return (pHandle_foc->speed); 
 }
 
 
@@ -177,22 +116,3 @@ static int16_t iir_lp_speed_q15(int16_t val){
 	filter_val = CLAMP_INT32_TO_INT16((filter_val >> 1));
 	return (filter_val);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

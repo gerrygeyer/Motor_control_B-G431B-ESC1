@@ -9,8 +9,8 @@
 #define INC_COMMUNICATION_H_
 
 #include <stdint.h>
-#include <foc.h>
-#include <task.h>
+#include "parameter.h"
+
 
 // communication
 #define MOTOR_STOPP 		0x00

@@ -7,7 +7,7 @@
 
 #ifndef INC_SETTINGS_H_
 #define INC_SETTINGS_H_
-#include "foc.h"
+
 #include "parameter.h"
 
 // ####### MOTOR NUMBER ######################
@@ -15,9 +15,6 @@
 // ####### SAFTY SETTINGS ####################
 #define AUTOMATIC_SWITCH_OFF			OFF		// stop the motor if loosing connection to master (deactivate for debug)
 #define MOTOR_DECOUPLE_CURRENT			OFF		// decouples the motor from current. OFF => the motor stopp if the system go to STOP state
-// ####### ONLINE TUNING #####################
-#define PI_TUNING_MODE 					ON
-
 // ####### CURRENT CONTROL SETTINGS ##########
 #define ANTI_WINDUP						ON
 
@@ -41,14 +38,5 @@
 //#define DEBUG_MODE 						ON
 #define DEBUG_MODE 						OFF
 
-
-
-
-
-// ######### Sliding Mode ####################
-
-
-#define SLIDING_MODE SIGMOID
-//#define SLIDING_MODE SIGNUM
 
 #endif /* INC_SETTINGS_H_ */

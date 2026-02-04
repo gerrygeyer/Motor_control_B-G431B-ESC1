@@ -6,20 +6,23 @@
  */
 
 
-#include <communication.h>
+#include "communication.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <main.h>
-#include <settings.h>
+#include "main.h"
+#include "settings.h"
 #include <stdbool.h>
 #include <stdlib.h>
+#include "motor_safety.h"
+#include "motor_types.h"
 
 #define BUFFER_SIZE 500
 #define DATA_POINTS 4
 #define BUFFER_LENGHT 2
 
 extern UART_HandleTypeDef huart2;
+extern Motor g_motor;
 
 HAL_StatusTypeDef status_send;
 
@@ -104,8 +107,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         	// the data were received correctly
         	communication.state = (uint8_t)RxData[1];
         	communication.speed_command = (int16_t)(RxData[3] | (RxData[2]<<8));
-        	if(abs(communication.speed_command) < 90){
-        		engine_stopp_function();
+        	if(abs(communication.speed_command) < MIN_RPM_COMMAND_FROM_MASTER){
+        		g_motor.stop_request_flag = true;
+				// engine_stopp_function();
         	}
 
         	// let's check if there is a new order
@@ -113,10 +117,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         		// if yes, then which one?
 				switch (communication.state){
 					case MOTOR_STOPP:
-						engine_stopp_function();
+						g_motor.stop_request_flag = true;
+						// engine_stopp_function();
 					break;
 					case MOTOR_START:
-						engine_start_function();
+						g_motor.start_request_flag = true;
+						// engine_start_function();
 					break;
 					case MOTOR_INIT:
 //						engine_init_function();
@@ -129,11 +135,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         	}
         	communication.old_state = communication.old_state;
         	// we have connection
-        	com_counter = 0;
+        	recive_motor_command();
         	// limit the input for safty
         	communication.speed_command = (communication.speed_command > MAX_SPEED)? MAX_SPEED: communication.speed_command;
         	communication.speed_command = (communication.speed_command< -MAX_SPEED)? -MAX_SPEED: communication.speed_command;
-
+			g_motor.speed_ref = communication.speed_command;
         	recive_finish = true;
         }else{
         	// the data was received incorrectly, delete the memory
@@ -146,75 +152,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 //    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 0);
 }
 
-void data_recived(void) {
-//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 1);
-        if(RxData[0] == 0xFF){
-        	recive_finish = false; // safty, dont read an write at the same time
-        	transmit_recive_data = true;
-        	// the data were received correctly
-        	communication.state = (uint8_t)RxData[1];
-        	communication.speed_command = (int16_t)(RxData[3] | (RxData[2]<<8));
-        	if(abs(communication.speed_command) < 90){
-        		engine_stopp_function();
-        	}
-
-        	// let's check if there is a new order
-        	if(communication.state != communication.old_state){
-        		// if yes, then which one?
-				switch (communication.state){
-					case MOTOR_STOPP:
-						engine_stopp_function();
-					break;
-					case MOTOR_START:
-						engine_start_function();
-					break;
-					case MOTOR_INIT:
-//						engine_init_function();
-					break;
-					default:
-						// do nothing
-					break;
-				}
-
-        	}
-        	communication.old_state = communication.old_state;
-        	// we have connection
-        	com_counter = 0;
-        	// limit the input for safty
-        	communication.speed_command = (communication.speed_command > MAX_SPEED)? MAX_SPEED: communication.speed_command;
-        	communication.speed_command = (communication.speed_command< -MAX_SPEED)? -MAX_SPEED: communication.speed_command;
-
-        	recive_finish = true;
-        }else{
-        	// the data was received incorrectly, delete the memory
-        	RxData[0] = 0x00;
-        	RxData[1] = 0x00;
-        	RxData[2] = 0x00;
-        	RxData[3] = 0x00;
-        }
-
-//    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 0);
-}
 
 
-
-
-void get_information(data* pHandle){
+void get_information(data* pHandle){	// old function, delete later
 	if(recive_finish){
 	pHandle->state = communication.state;
 	pHandle->speed_command = communication.speed_command;
-	}
-}
-
-/*
- *  a function that stops the motor if the connection is lost
- *  for a certain period of time
- */
-void automatic_switch_off(void){
-	com_counter += 1;
-	if ((com_counter > 1000) && AUTOMATIC_SWITCH_OFF){
-		engine_stopp_function();
-		communication.old_state = MOTOR_NO_RESPONSE;
 	}
 }
 
@@ -278,20 +221,14 @@ void data_log_speed_current_500Hz(FOC_HandleTypeDef *pHandle_foc, uint8_t system
 	static uint16_t send_fault_counter = 0;
 	static uint8_t send_value_buffer[10] = {0,0,0,0,0,0,0,0,0,0};
 
-//		const uint8_t S = 0x53;
-//		const uint8_t T = 0x54;
-//		const uint8_t A = 0x41;
-//		const uint8_t R = 0x52;
-
 		const uint8_t header1 = 0xF9;
 		const uint8_t header2 = 0xF7;
 		const uint8_t footer = 0x53;
 
-//if(transmit_recive_data){
-//	transmit_recive_data = false;
+
 		int16_t iq_meas 	= pHandle_foc->Iq_meas_q15;
 		int16_t speed		= pHandle_foc->speed;
-		uint16_t battery	= pHandle_foc->battery_voltage;
+		uint16_t battery	= pHandle_foc->source_voltage;
 		uint8_t state		= system_state;
 
 		send_value_buffer[0] = (header1);

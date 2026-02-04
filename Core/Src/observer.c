@@ -16,23 +16,6 @@
 
 
 
-void openloop(uint16_t speed_rpm, observer *pHandle){
-
-	int32_t speed_rps, angle_count;
-	uint32_t angle = pHandle->theta_openloop;
-	float x1, x2;
-
-	speed_rps = (speed_rpm * PMSM_POLEPAIR)/60;
-	x1 = (float)UINT16_MAX_VALUE / (float)FOC_FREQUENCY;
-	x2 = (float)speed_rps * x1;
-	angle_count = (int32_t)(x2);
-	angle = angle + angle_count;
-
-	pHandle->theta_openloop = angle;
-
-}
-
-
 // function to start, stop the time the motor control need
 
 void start_time_measurement(void){

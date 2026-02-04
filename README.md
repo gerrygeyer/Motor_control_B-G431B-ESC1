@@ -15,20 +15,14 @@ Die Motorsteuerung ist in mehrere funktionale Module aufgeteilt: **foc.c** imple
 Der Strom Regelkreis wird mit der tuning method des technischen Optimums erstellt, bei der die Übertragungsfunktion des geregelten Systems als die eines Tiefpassfilter erster Ordnung eingestellt wird.
 
 
-
-Nachzulesen bei [1]. 
+Nachzulesen bei [1].
 
 [1] Control of Electric Machine Drive Systems | Wiley Online Books. https://onlinelibrary.wiley.com/doi/book/10.1002/ 9780470876541, . – (Accessed on 08/06/2022)
 
 
-
-
-
-## Automat
+### Automat
 
 ![Ablaufdiagramm](./docs/picture_diagrams/Ablaufdiagramm.drawio.svg)
-
-
 
 
 

@@ -106,7 +106,7 @@ void reset_pi_integrator(void){
 dq_t PI_id_iq_Q15(dq_t error, FOC_HandleTypeDef *pHandle_foc){
 
 	dq_t Output, V;
-	dq_f P;
+	dq_t P;
 	int32_t x;
 
 
@@ -209,7 +209,8 @@ int16_t pi_speed_q15 (int32_t speed_rpm, int32_t speed_rpm_ref, FOC_HandleTypeDe
 	C = P + (I_speed_buffer_q20 >> 5);
 
 	Output = CLAMP_INT32_TO_INT16(C);
-	pHandle_foc->Iq_set_q15 = Output;
+	pHandle_foc->I_ref_q15.q = Output;
+	pHandle_foc->I_ref_q15.d = 0;
 
 	return (Output);
 }

@@ -63,6 +63,7 @@ static void PWM_All_Stop(void)
     HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3);
 }
 
+// necessary if we add a state to come back from fault state (Future Work)
 static void PWM_All_Start(void)
 {
 	if(MOTOR_DECOUPLE_CURRENT == OFF) return;
@@ -85,9 +86,38 @@ void motor_safety_stop_motor(void){
 
 
 void motor_check_parameter(TIM_HandleTypeDef *htim){
+
+    // ############ CHECK ENCODER TIMER PERIOD ##############
     int64_t data = ENCODER_PULS_PER_REVOLUTION * 16;
     if(htim->Init.Period != (uint32_t)(data - 1)){
         // Error: wrong timer period for encoder
         Error_Handler();
     }
+    // ######################################################
+
+    // Future Work : check other parameters
+
 }
+
+
+
+
+const uint16_t r_lut[16] = {
+  5825, 
+  3362, 
+  2017, 
+  1254, 
+   804, 
+   530, 
+   359, 
+   249, 
+   176, 
+   127, 
+    93, 
+    70, 
+    53, 
+    41, 
+    32, 
+    25
+
+};

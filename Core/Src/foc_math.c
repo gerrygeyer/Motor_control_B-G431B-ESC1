@@ -8,7 +8,6 @@
 #include <foc_math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <foc.h>
 #include "parameter.h"
 
 /*
@@ -133,9 +132,6 @@ int16_t get_INT16_representation(float value){
 }
 
 
-
-
-
 uint32_t sqrt_fast_uint(uint32_t n) {
     if (n == 0) return 0;
 
@@ -176,10 +172,10 @@ dq_t circle_limitation_Q15(dq_t Vdq, const uint32_t max_output){
 		return Output;
 	}
 
-    // 2. Skalenfaktor vorbereiten in Q15: scale = 32767 / |v|
+    // Skalenfaktor vorbereiten in Q15: scale = 32767 / |v|
     // Wir rechnen: scale = (32767 << 15) / mag
     uint32_t scale_q15 = (max_output << 15) / mag;
-    // 3. norm[i] = (accel[i] * scale_q15) >> 15
+    // norm[i] = (accel[i] * scale_q15) >> 15
     Output.d = CLAMP_INT32_TO_INT16((int32_t)(((int64_t)x * scale_q15) >> 15));
     Output.q = CLAMP_INT32_TO_INT16((int32_t)(((int64_t)y * scale_q15) >> 15));
 

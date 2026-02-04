@@ -3,7 +3,7 @@
 
 Motor g_motor = {
     .state = ST_STOP,
-    .speed_ref = 0,
+    .speed_ref = 500,
     .position_info = POS_ENCODER,
     .gotostart_finish_flag = false,
     .stop_request_flag = false,

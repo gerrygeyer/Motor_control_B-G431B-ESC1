@@ -9,7 +9,6 @@
 #define INC_ENCODER_H_
 
 #include <main.h>
-#include <foc.h>
 #include <foc_math.h>
 
 

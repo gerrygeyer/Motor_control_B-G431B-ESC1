@@ -228,7 +228,7 @@ void data_log_speed_current_500Hz(FOC_HandleTypeDef *pHandle_foc, uint8_t system
 
 		int16_t iq_meas 	= pHandle_foc->Iq_meas_q15;
 		int16_t speed		= pHandle_foc->speed;
-		uint16_t battery	= pHandle_foc->battery_voltage;
+		uint16_t battery	= pHandle_foc->source_voltage;
 		uint8_t state		= system_state;
 
 		send_value_buffer[0] = (header1);

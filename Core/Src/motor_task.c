@@ -2,6 +2,7 @@
  *
  *  Created on: Dec 24, 2024
  */
+ 
 #include "motor_types.h"
 #include "motor_safety.h"
 #include "motor_task.h"
@@ -23,6 +24,8 @@ static void lowspeed_motor_task(Motor *m);
 
 FOC_HandleTypeDef foc_values;
 
+ab_t gotostart_current = {0,0};
+
 void init_motor_task(void)
 {
     init_foc(&foc_values);
@@ -41,6 +44,7 @@ void motor_time_management(void)
     static uint16_t lowspeed_task_counter = 0;
 
     calc_rotor_position();
+    
 
     highspeed_motor_task(&g_motor);
 
@@ -75,6 +79,7 @@ static void highspeed_motor_task(Motor *m)
         svm_output pwm_output;
 
         case ST_STOP:
+            execute_current_measurement(&foc_values, STATIONARY);
             // Handle stop state
             reset_pi_integrator();
 
@@ -85,29 +90,32 @@ static void highspeed_motor_task(Motor *m)
             break;
         case ST_CLOSEDLOOP:
          // Handle closed loop state
+            execute_current_measurement(&foc_values, MOTOR_RUN);
             foc_values.foc_mode 	= FOC_CLOSELOOP;
-            execute_FOC(&foc_values,0.0f); // Iq muss noch weg 
-            pwm_output = get_PWM_OUTPUT_Q15(foc_values.V_q15);
+            execute_FOC(&foc_values);
+            pwm_output = get_PWM_OUTPUT_Q15(foc_values.V_abc_q15);
             TIM1->CCR1 = pwm_output.Sa;
 			TIM1->CCR2 = pwm_output.Sb;
 			TIM1->CCR3 = pwm_output.Sc;
             break;
         case ST_OPENLOOP:
+            execute_current_measurement(&foc_values, MOTOR_RUN);
             // Handle open loop state
 
             foc_values.foc_mode 		= FOC_OPENLOOP;
             if(m->speed_ref > 0){
-            	generate_openloop(500, &foc_values);
+            	generate_openloop(200, &foc_values);
             }else{
-            	generate_openloop(-500, &foc_values);
+            	generate_openloop(-200, &foc_values);
             }
-            execute_FOC(&foc_values, 0.0f); // Iq muss noch weg
-            pwm_output = get_PWM_OUTPUT_Q15(foc_values.V_q15);
+            execute_FOC(&foc_values);
+            pwm_output = get_PWM_OUTPUT_Q15(foc_values.V_abc_q15);
             TIM1->CCR1 = pwm_output.Sa;
             TIM1->CCR2 = pwm_output.Sb; 
             TIM1->CCR3 = pwm_output.Sc;
             break;
         case ST_GOTOSTART:
+            execute_current_measurement(&foc_values, MOTOR_RUN);
             // Handle go to start state
             if(m->gotostart_finish_flag){
                 // already at start
@@ -117,12 +125,15 @@ static void highspeed_motor_task(Motor *m)
             V.d = CLAMP((int32_t)(GOTOSTART_Q_VOLTAGE * (float)Q15 / (float)MAX_VOLTAGE),0,(Q14)); // *2.0f // CLAMOP to Q14 to be sure that we dont overrun
             V.q = 0;
             static uint16_t gotostart_counter = 0;
-            if(gotostart_counter < 5000){
-                if(gotostart_counter < 4000){
+            if(gotostart_counter < 10000){
+                if(gotostart_counter < 9000){
                     set_encoder_to_zero(&foc_values);
                 }
+                if(gotostart_counter > 5000 && gotostart_counter < 9000){
+                   gotostart_current = foc_values.I_ab_q15;	
+                }
                     pwm_output = goto_position(V);
-                    set_encoder_to_zero(&foc_values);
+                    // set_encoder_to_zero(&foc_values);
                     TIM1->CCR1 = pwm_output.Sa;
                     TIM1->CCR2 = pwm_output.Sb;
                     TIM1->CCR3 = pwm_output.Sc;
@@ -134,6 +145,7 @@ static void highspeed_motor_task(Motor *m)
             }
             break;
         case ST_PARAMETER_ID:
+            execute_current_measurement(&foc_values, MOTOR_RUN);
             // Handle fault state
             TIM1->CCR1 = 0;
 			TIM1->CCR2 = 0;
@@ -168,7 +180,10 @@ static void middlespeed_motor_task(Motor *m)
 
 static void lowspeed_motor_task(Motor *m)
 {
-    /**
+   
+    safety_gotostart_blocker(m);       // 
+    read_voltage_value(&foc_values);
+     /**
      * @brief Reads the voltage value and updates the FOC (Field-Oriented Control) values structure.
      * 
      * This function acquires the current voltage measurement from the motor control system
@@ -182,8 +197,6 @@ static void lowspeed_motor_task(Motor *m)
      * 
      * @see current_measurement.h
      */
-    safety_gotostart_blocker(m);       // 
-    read_voltage_value(&foc_values);
     execute_voltage_measurement();
     // Implement lowspeed task logic here
     // e.g., position control, etc.

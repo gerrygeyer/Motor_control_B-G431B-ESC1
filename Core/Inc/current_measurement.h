@@ -79,6 +79,12 @@
 //#define VALUE_TO_VOLT	(float)0.008369954427
 
 
+typedef enum{
+	STATIONARY=0,
+	MOTOR_RUN
+}CurrMeasState;
+
+
 typedef struct {
 	uint16_t a;
 	uint16_t b;
@@ -119,12 +125,8 @@ void init_current_measurement(void);
  *  After DMA has finished, read the current measurement from the ADC and remove
  *  the DC component by substract lowpassfilter (cut. freq around 1 Hz)
  */
-void execute_current_measurement(void);
+void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState mode);
 
-/*
- * returns the current values ia ib in Q15 format
- */
-ab_t get_realCurrentQ15(void);
 /*
  * execute the ADC in regular mode to measured the battery voltage
  */

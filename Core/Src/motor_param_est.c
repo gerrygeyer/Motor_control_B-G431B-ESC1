@@ -4,7 +4,6 @@
 
 #include "motor_param_est.h"
 #include "foc_math.h"
-#include "foc.h"
 #include "current_measurement.h"
 #include <stddef.h>
 #include <stdint.h>

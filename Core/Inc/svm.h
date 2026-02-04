@@ -57,10 +57,6 @@ typedef struct {
 
 void init_SVM(void);
 
-
-abc_f SVM_input_Va_Vb_Vc(abc_f v);
-svm_output execute_SVM_matlab(abc_f v);
-abc_f Sinus_Va_Vb_Vc(abc_f v);
 void generate_svm_output(void);
 void set_output_to_zero(void);
 

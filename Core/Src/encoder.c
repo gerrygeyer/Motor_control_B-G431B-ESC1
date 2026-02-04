@@ -6,7 +6,6 @@
  */
 #include <encoder.h>
 #include <main.h>
-#include <foc.h>
 #include <observer.h>
 #include <stdlib.h>
 
@@ -20,10 +19,6 @@ uint16_t encoder_count;// speed_lp_buffer;
 uint32_t count_to_angle; // pre-calc
 
 uint32_t encoder_count_large;
-
-int32_t speed_t_large;
-uint16_t encoder_count_uint, encoder_debug;
-
 int32_t rotor_position = 0;
 
 
@@ -50,17 +45,17 @@ void set_encoder_to_zero(FOC_HandleTypeDef *pHandle_foc){
 void calc_rotor_position(void){
 
 	encoder_count = encoder_count_large = __HAL_TIM_GET_COUNTER(&htim4);
-	encoder_debug = encoder_count;
-	uint16_t virtual_rotations = encoder_count/ENCODER_PULS_PER_REVOLUTION;
-	encoder_count = encoder_count - (virtual_rotations * ENCODER_PULS_PER_REVOLUTION);
+	uint16_t rotation = encoder_count/ENCODER_PULS_PER_REVOLUTION;
+	encoder_count = encoder_count - (rotation * ENCODER_PULS_PER_REVOLUTION);
 	// now we have the real encoder count within one revolution
 
+	// ############## TRANSFORM POSITION TO Q16 SCALE  #################
 	uint32_t x 		= encoder_count_large * (uint32_t)Q16; // Q16 = 2^16
 	x 				/= (16 * ENCODER_PULS_PER_REVOLUTION); // ENCODER_PULS_PER_REVOLUTION = 4000
-	rotor_position 	= (int32_t)x;
+	rotor_position 	= (int32_t)x;	// we need the global variable rotor_position for speed calculation
 
 	// ############## TRANSFORM TO ELECTRICAL ANGLE #################
-	encoder_count_uint = (encoder_count * count_to_angle); 
+	uint16_t encoder_count_uint = (encoder_count * count_to_angle); 
 	encoder_count = (uint16_t)encoder_count_uint;
 
 }
@@ -78,9 +73,7 @@ int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc){
 	// fist: scale the encoder count to Q16 (UINT16_MAX).
 	// @note: if the encoder have 4096 steps, its not necessary.
 
-	int16_t encoder_value = (int16_t)rotor_position;
-
-	speed_t_large = (int16_t)(encoder_value - encoder_last_value_q15);
+	int32_t speed_t_large = (int16_t)((int16_t)rotor_position - encoder_last_value_q15);
 
 	speed_t_large *= (FOC_FREQUENCY/DIVISION_M); // -> rps
 	speed_t_large >>= 2; // normaly we make bitshift 16 but lets split it in two parts for protecting against overflow
@@ -92,7 +85,6 @@ int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc){
 
 	int32_t speed_filter =speed_t_large;
 	speed_filter = CLAMP_INT32_TO_INT16(speed_filter);
-
 	speed_filter = iir_lp_speed_q15((int16_t)speed_filter);
 
 	pHandle_foc->speed = (int16_t)speed_filter;
@@ -130,22 +122,3 @@ static int16_t iir_lp_speed_q15(int16_t val){
 	filter_val = CLAMP_INT32_TO_INT16((filter_val >> 1));
 	return (filter_val);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

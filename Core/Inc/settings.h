@@ -7,7 +7,7 @@
 
 #ifndef INC_SETTINGS_H_
 #define INC_SETTINGS_H_
-#include "foc.h"
+
 #include "parameter.h"
 
 // ####### MOTOR NUMBER ######################

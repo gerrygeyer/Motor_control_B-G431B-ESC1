@@ -131,12 +131,9 @@ void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState m
  * execute the ADC in regular mode to measured the battery voltage
  */
 void execute_voltage_measurement(void);
+void execute_temperature_measurement(void);
 void read_voltage_value(FOC_HandleTypeDef *pHandle_foc);
+void read_temperature_value(FOC_HandleTypeDef *pHandle_foc);
 
-
-/*
- * return the adc voltage
- */
-int16_t get_voltage_value(void);
 
 #endif /* INC_CURRENT_MEASUREMENT_H_ */

@@ -20,7 +20,7 @@ extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 
 uint32_t adc_buffer_voltage = 0, adc_buffer_temperature = 0;
-int16_t adc_value;
+int16_t adc_value, temperature_value;
 
 
 abi32_t current_value_t;
@@ -123,54 +123,78 @@ void execute_voltage_measurement(void){
 	HAL_ADC_Start_DMA(&hadc2, &adc_buffer_voltage, 1);
 }
 
-int16_t get_voltage_value(void){
-	return (adc_value);
+void execute_temperature_measurement(void){
+	HAL_ADC_Start_DMA(&hadc1, &adc_buffer_temperature, 1);
 }
 
 void read_voltage_value(FOC_HandleTypeDef *pHandle_foc){
 	pHandle_foc->source_voltage = adc_value;
 }
 
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-
-	uint32_t x = (int32_t)adc_buffer_voltage * BAT_VOLT32_Q25; // Q12 + Q7 = Q19
-
-//	x = (x >> 5); // Divide with max Voltage (= V_max = 32V) (Q19)
-//	x = (x >> 4); // Scale back to Q15
-	// simplify:
-	x = (x >> 10);
-
-	adc_value = CLAMP_INT32_TO_INT16((int32_t)x); // V = x* 32/Q15
+void read_temperature_value(FOC_HandleTypeDef *pHandle_foc){
+	pHandle_foc->temperature = temperature_value;
 }
 
 
-
-
-
-
-const uint16_t r_lut[16] = {
-  5825, 
-  3362, 
-  2017, 
-  1254, 
-   804, 
-   530, 
-   359, 
-   249, 
-   176, 
-   127, 
-    93, 
-    70, 
-    53, 
-    41, 
-    32, 
-    25
+const uint16_t adc_lut_raw[16] = {
+   306, 
+   502, 
+   774, 
+  1117, 
+  1511, 
+  1924, 
+  2322, 
+  2678, 
+  2979, 
+  3224, 
+  3416, 
+  3566, 
+  3681, 
+  3769, 
+  3836, 
+  3888
 
 };
 
 
-void execute_temperature_measurement(void){
-	HAL_ADC_Start_DMA(&hadc1, &adc_buffer_temperature, 1);
+
+// get temperature in degree celsius from adc raw value with interpolation
+static int16_t adc_to_temp(uint16_t adc_raw) {
+  uint8_t low = 0, high = 15;
+  
+  while(low < high) {
+    uint8_t mid = low + (high - low) / 2;
+    if(adc_raw >= adc_lut_raw[mid]) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  uint8_t i = low - 1; 
+  
+  // Interpolation
+  int16_t temp = i * 10;
+  if(i < 15) {
+    uint32_t a1 = adc_lut_raw[i], a2 = adc_lut_raw[i+1];
+    temp += 10 * (adc_raw - a1) / (a2 - a1);
+  }
+  return temp;
 }
 
-// continue
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+  	if (hadc->Instance == ADC1)
+    {
+        temperature_value = adc_to_temp(adc_buffer_temperature);
+    }
+	if (hadc->Instance == ADC2)
+    {
+        uint32_t x = (int32_t)adc_buffer_voltage * BAT_VOLT32_Q25; // Q12 + Q7 = Q19
+
+		//	x = (x >> 5); // Divide with max Voltage (= V_max = 32V) (Q19)
+		//	x = (x >> 4); // Scale back to Q15
+		// simplify:
+		x = (x >> 10);
+		adc_value = CLAMP_INT32_TO_INT16((int32_t)x); // V = x* 32/Q15
+    }
+
+}

@@ -262,6 +262,7 @@ typedef struct{
 	uint8_t foc_mode;
 
 	int16_t source_voltage;
+	int16_t temperature;
 
 	abc_16t V_q15;
 	int16_t Iq_value;

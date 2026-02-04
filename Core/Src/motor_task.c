@@ -21,6 +21,7 @@
 static void highspeed_motor_task(Motor *m);
 static void middlespeed_motor_task(Motor *m);
 static void lowspeed_motor_task(Motor *m);
+static void oneHz_motor_task(Motor *m);
 
 FOC_HandleTypeDef foc_values;
 
@@ -39,13 +40,13 @@ void init_motor_task(void)
 
 
 void motor_time_management(void)
-{
-    static uint16_t middlespeed_task_counter = 0;
-    static uint16_t lowspeed_task_counter = 0;
+{   // dont start all tasks at the same time, so we can spread the load a bit
+    static uint16_t middlespeed_task_counter = 2;
+    static uint16_t lowspeed_task_counter = 1;
+    static uint16_t oneHz_task_counter = 0;
 
     calc_rotor_position();
     
-
     highspeed_motor_task(&g_motor);
 
 
@@ -66,6 +67,13 @@ void motor_time_management(void)
         lowspeed_task_counter += 1;
     }
 
+    // 1Hz task
+    if(oneHz_task_counter >= (FOC_FREQUENCY)){
+        oneHz_task_counter = 0;
+        oneHz_motor_task(&g_motor);
+    }else{
+        oneHz_task_counter += 1;    
+    }
 
 }
 
@@ -203,6 +211,25 @@ static void lowspeed_motor_task(Motor *m)
 
 }
 
+static void oneHz_motor_task(Motor *m){
+
+    read_temperature_value(&foc_values);
+     /**
+     * @brief Reads the temperature value and updates the FOC (Field-Oriented Control) values structure.
+     * 
+     * This function acquires the current temperature measurement from the motor control system
+     * and stores the result in the provided FOC values structure for use in field-oriented
+     * control calculations.
+     * 
+     * @param[in,out] foc_values Pointer to the FOC values structure where the read temperature
+     *                            value will be stored.
+     * 
+     * @note This function is declared in current_measurement.h
+     * 
+     * @see current_measurement.h
+     */
+    execute_temperature_measurement();
+}
 
 
 void fault_motor_task(Motor *m)

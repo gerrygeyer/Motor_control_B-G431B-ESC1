@@ -1,9 +1,0 @@
-
-#ifndef TEMPERATURE_MEAS_H_
-#define TEMPERATURE_MEAS_H_
-
-
-
-
-
-#endif /* TEMPERATURE_MEAS_H_ */

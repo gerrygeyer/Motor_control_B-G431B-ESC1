@@ -24,13 +24,15 @@ static void lowspeed_motor_task(Motor *m);
 static void oneHz_motor_task(Motor *m);
 
 FOC_HandleTypeDef foc_values;
+Control_Loops ctrl;
+
 
 ab_t gotostart_current = {0,0};
 
 void init_motor_task(void)
 {
     init_foc(&foc_values);
-    init_control_functions();
+    init_control_functions(&ctrl);
     init_SVM();
     init_current_measurement();
     init_encoder();
@@ -87,7 +89,7 @@ static void highspeed_motor_task(Motor *m)
         case ST_STOP:
             execute_current_measurement(&foc_values, STATIONARY);
             // Handle stop state
-            reset_pi_integrator();
+            reset_pi_integrator(&ctrl);
 
             // set outputs to zero
             TIM1->CCR1 = 0;
@@ -98,7 +100,7 @@ static void highspeed_motor_task(Motor *m)
          // Handle closed loop state
             execute_current_measurement(&foc_values, MOTOR_RUN);
             foc_values.foc_mode 	= FOC_CLOSELOOP;
-            execute_FOC(&foc_values);
+            execute_FOC(&foc_values, &ctrl);
             pwm_output = get_PWM_OUTPUT_Q15(foc_values.V_abc_q15);
             TIM1->CCR1 = pwm_output.Sa;
 			TIM1->CCR2 = pwm_output.Sb;
@@ -114,7 +116,7 @@ static void highspeed_motor_task(Motor *m)
             }else{
             	generate_openloop(-200, &foc_values);
             }
-            execute_FOC(&foc_values);
+            execute_FOC(&foc_values, &ctrl);
             pwm_output = get_PWM_OUTPUT_Q15(foc_values.V_abc_q15);
             TIM1->CCR1 = pwm_output.Sa;
             TIM1->CCR2 = pwm_output.Sb; 
@@ -166,7 +168,7 @@ static void highspeed_motor_task(Motor *m)
             motor_safety_stop_motor();
             break;
         default:
-            reset_pi_integrator();
+            reset_pi_integrator(&ctrl);
             // set outputs to zero
             TIM1->CCR1 = 0;
 			TIM1->CCR2 = 0;
@@ -179,7 +181,7 @@ static void highspeed_motor_task(Motor *m)
 static void middlespeed_motor_task(Motor *m)
 {
     speed_calculation(&foc_values);
-    pi_speed_q15(foc_values.speed,m->speed_ref,&foc_values);
+    pi_speed_q15(foc_values.speed,m->speed_ref,&ctrl,&foc_values);
     automatic_motor_switch_off(m);
 	data_log_speed_current_500Hz(&foc_values, (uint8_t)m->state); // Send data back via UART (Optional)
 }

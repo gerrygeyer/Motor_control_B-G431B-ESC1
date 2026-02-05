@@ -47,17 +47,17 @@ void init_foc(FOC_HandleTypeDef *pHandle){
 
 }
 
-void clear_foc(FOC_HandleTypeDef *pHandle){ // need this for start and stop without setting new Kp,Ki,.. values
+void clear_foc(FOC_HandleTypeDef *pHandle, Control_Loops *ctrl){ // need this for start and stop without setting new Kp,Ki,.. values
 
-		clear_control_parameter();
+		clear_control_parameter(ctrl);
 
 }
 
-void execute_FOC(FOC_HandleTypeDef *pHandle_foc){
+void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
 	angle_t el_theta_q15;
 
 	// for change the parameter online
-	update_PI_parameter();
+	update_PI_parameter(ctrl);
 
 	switch (pHandle_foc->foc_mode){
 	case FOC_OPENLOOP: // generates openloop voltage vector without control
@@ -73,7 +73,7 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc){
 		debug_PWM_OUT = get_PWM_OUTPUT_Q15(pHandle_foc->V_abc_q15);
 
 		// dont use PI control, clear the integral parts
-		clear_control_parameter();
+		clear_control_parameter(ctrl);
 
 	break;
 
@@ -92,7 +92,7 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc){
 		median_filter_d_t(&pHandle_foc->I_dq_q15.d);
 		median_filter_q_t(&pHandle_foc->I_dq_q15.q);
 
-		pHandle_foc->V_dq_q15 = PI_id_iq_Q15(error_fct(pHandle_foc->I_ref_q15, pHandle_foc->I_dq_q15), pHandle_foc); // PI current control in Q15
+		pHandle_foc->V_dq_q15 = PI_id_iq_Q15(error_fct(pHandle_foc->I_ref_q15, pHandle_foc->I_dq_q15),ctrl, pHandle_foc); // PI current control in Q15
 		pHandle_foc->V_alph_bet_q15 = inverse_park_transformation_q15(pHandle_foc->V_dq_q15,pHandle_foc->elec_theta_q15);	// Inverse Park transformation
 		pHandle_foc->V_abc_q15 = inverse_clark_transformation_q15(pHandle_foc->V_alph_bet_q15);	// Inverse Clarke transformation
 

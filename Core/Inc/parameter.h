@@ -285,6 +285,51 @@ typedef struct{
 
 }FOC_HandleTypeDef;
 
+typedef enum {
+	q18 = 18,
+	q17 = 17,
+	q16 = 16,
+    q15 = 15,
+    q14 = 14,
+    q13 = 13,
+    q12 = 12,
+	Qerror = -1
+} q_format_t;
+
+typedef struct {
+    int16_t     value;
+    q_format_t q;
+} fixed16_t;
+
+typedef struct {
+	fixed16_t Kp;
+	fixed16_t Ki;
+	dq_32t I_buffer_q20;
+	dq_t windup;
+} PID_Controller;
+typedef struct {
+	float Rs;
+	float Ls;
+	float J;
+	float B;
+	float Ke;
+	float bandwidth_current;
+	float bandwidth_speed;
+	float cutoff_freq_div;
+	float max_current;
+	float max_voltage;
+	float max_speed;
+}motor_parameters_f;
+typedef struct {
+	motor_parameters_f motor_params;
+    PID_Controller current;
+    PID_Controller speed;
+	int16_t alpha;
+} Control_Loops;
+
+
+
+
 typedef struct{
 	float y;
 	float u;

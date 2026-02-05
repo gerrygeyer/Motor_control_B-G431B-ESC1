@@ -9,6 +9,7 @@
 #include "parameter.h"
 #include "settings.h"
 #include "foc_math.h"
+#include <math.h>
 
 // PI Control Parameter (global)
 int16_t Kp_Q14, Ki_Q15, Kp_s_Q10, Ki_s_Q13;
@@ -23,8 +24,90 @@ uint16_t bandwidth_speed = 0, bandwidth_current = 0, cutoff_freq_div = 0;
 // debug
 int16_t debug_error_speed = 0;
 
-void init_control_functions(void){
+static q_format_t find_Q_format(float value){
+	float value_abs = fabsf(value);
+	if(value_abs > 1.0f){
+		if(value_abs > 8.0f){
+			return Qerror; // value too high for fixed16_t
+		}else if (value_abs > 4.0f) {
+			return q12;
+		}else if (value_abs > 2.0f) {
+			return q13;
+		}else{
+			return q14;
+		}
+	}else{
 
+		if(value_abs > 0.5f){
+			return q15;
+	}else if (value_abs > 0.25f) {
+			return q16;
+	
+	}else if (value_abs > 0.125) {
+			return q17;
+	}else{
+			return q18;
+		}
+	if(value_abs == 0.0f){
+		return Qerror; 
+	}
+
+	}
+}
+
+static void calculate_PI_parameter(Control_Loops *ctrl){
+	float kp_c = (ctrl->motor_params.Ls * ctrl->motor_params.bandwidth_current * ctrl->motor_params.max_current)/(float)ctrl->motor_params.max_voltage;	
+	float ki_c = (ctrl->motor_params.Rs * (float)ctrl->motor_params.bandwidth_current * ctrl->motor_params.max_current)/((float)ctrl->motor_params.max_voltage * (float)FOC_FREQUENCY);
+
+	float kp_s = (ctrl->motor_params.J * ctrl->motor_params.bandwidth_speed / ctrl->motor_params.Ke) * RPM_TO_RAD_S * (float)ctrl->motor_params.max_speed / ctrl->motor_params.max_current; 
+	float speed_control_frequency = (float)FOC_FREQUENCY/(float)DIVISION_M;
+	float ki_s = (kp_s * ctrl->motor_params.bandwidth_speed / (ctrl->motor_params.cutoff_freq_div * speed_control_frequency)) * RPM_TO_RAD_S * (float)ctrl->motor_params.max_speed / ctrl->motor_params.max_current;
+
+	ctrl->current.Kp.q = find_Q_format(kp_c);
+	if(ctrl->current.Kp.q == Qerror){
+		// handle error
+	}
+	ctrl->current.Kp.value = (int16_t)((kp_c * (float)(1 << ctrl->current.Kp.q)) + 0.5f);
+
+	ctrl->current.Ki.q = find_Q_format(ki_c);
+		if(ctrl->current.Ki.q == Qerror){
+		// handle error
+	}
+	ctrl->current.Ki.value = (int16_t)((ki_c * (float)(1 << ctrl->current.Ki.q)) + 0.5f);
+	
+	ctrl->speed.Kp.q = find_Q_format(kp_s);
+			if(ctrl->speed.Kp.q == Qerror){
+		// handle error
+	}
+	ctrl->speed.Kp.value = (int16_t)((kp_s * (float)(1 << ctrl->speed.Kp.q)) + 0.5f);
+	ctrl->speed.Ki.q = find_Q_format(ki_s);
+	if(ctrl->speed.Ki.q == Qerror){
+		// handle error
+	}
+	ctrl->speed.Ki.value = (int16_t)((ki_s * (float)(1 << ctrl->speed.Ki.q)) + 0.5f);
+}
+
+void init_control_functions(Control_Loops *ctrl){
+
+	ctrl->motor_params.Rs = PMSM_RS_OHM;
+	ctrl->motor_params.Ls = PMSM_LS;
+	ctrl->motor_params.J = PMSM_J_M_R;
+	ctrl->motor_params.B = PMSM_B;
+	ctrl->motor_params.Ke = PMSM_KE;
+	ctrl->motor_params.max_current = MAX_CURRENT;
+	ctrl->motor_params.max_voltage = MAX_VOLTAGE;
+	ctrl->motor_params.max_speed = MAX_SPEED;
+	ctrl->motor_params.bandwidth_current = BANDWIDTH_CURRENT;
+	ctrl->motor_params.bandwidth_speed = BANDWIDTH_SPEED;
+	ctrl->motor_params.cutoff_freq_div = CUTOFFF_FREQU_DIV;
+
+	ctrl->current.I_buffer_q20 = (dq_32t){0,0};
+	ctrl->speed.I_buffer_q20 = (dq_32t){0,0};
+	ctrl->current.windup = (dq_t){0,0};
+	ctrl->speed.windup = (dq_t){0,0};
+	ctrl->alpha = (int16_t)(PI_IP_ALPHA * (float)Q15);
+
+	calculate_PI_parameter(ctrl);
 
 	cutoff_freq_div = CUTOFFF_FREQU_DIV;
 	bandwidth_speed = BANDWIDTH_SPEED;
@@ -50,7 +133,7 @@ void init_control_functions(void){
 	I_speed_buffer_q20 = 0;
 }
 
-void clear_control_parameter(void){
+void clear_control_parameter(Control_Loops *ctrl){
 
 	// clear all PI buffer
 	I_current_buffer_q20.d = 0;
@@ -58,7 +141,7 @@ void clear_control_parameter(void){
 	I_speed_buffer_q20 = 0;
 }
 
-void update_PI_parameter(void){
+void update_PI_parameter(Control_Loops *ctrl){
 
 	static uint16_t bandwidth_speed_last = 0;
 	static uint16_t bandwidth_current_last = 0;
@@ -96,14 +179,14 @@ void update_PI_parameter(void){
 
 
 
-void reset_pi_integrator(void){
+void reset_pi_integrator(Control_Loops *ctrl){
 
-	I_current_buffer_q20.d = 0;
-	I_current_buffer_q20.q = 0;
+	ctrl->current.I_buffer_q20.d = 0;
+	ctrl->current.I_buffer_q20.q = 0;
 }
 
 
-dq_t PI_id_iq_Q15(dq_t error, FOC_HandleTypeDef *pHandle_foc){
+dq_t PI_id_iq_Q15(dq_t error, Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_foc){
 
 	dq_t Output, V;
 	dq_t P;
@@ -126,45 +209,45 @@ dq_t PI_id_iq_Q15(dq_t error, FOC_HandleTypeDef *pHandle_foc){
 	 */
 
 	// d-part
-	P.d = ((error.d * Kp_Q14) >> 14);
+	P.d = CLAMP_INT32_TO_INT16(((int32_t)error.d * ctrl->current.Kp.value) >> ctrl->current.Kp.q);
 
 	// Q15 * Q15 = Q30, >>10 results in Q20 for more accuracy in the integrator
 	// Later >>5 again to get to Q15 for the output
-	I_current_buffer_q20.d += ((error.d * Ki_Q15) >> 10);
+	ctrl->current.I_buffer_q20.d += (((int32_t)error.d * ctrl->current.Ki.value) >> (ctrl->current.Ki.q - 5));
 	/* windup: note that the effect are Q2 times smaller (because
 	 * the current buffer are in Q20 and the windup increased to Q16)
 	 */
-	I_current_buffer_q20.d -= (winduptQ15.d << 1);
+	ctrl->current.I_buffer_q20.d -= (winduptQ15.d << 1);
 
 	/* limit the buffer, protection of overrun. To limit to the max
 	 * output voltage (Q15) set the limits to Q20 and -Q20, because the
 	 * buffer are in Q20 and will be every time shift back to Q15 (for
 	 * better resolution).
 	 */
-	I_current_buffer_q20.d = CLAMP(I_current_buffer_q20.d, -Q20, Q20);
+	ctrl->current.I_buffer_q20.d = CLAMP(ctrl->current.I_buffer_q20.d, -Q20, Q20);
 
-	x = ((I_current_buffer_q20.d >> 5) + P.d);
+	x = ((ctrl->current.I_buffer_q20.d >> 5) + P.d);
 
 	V.d = CLAMP_INT32_TO_INT16(x);
 
 
 	// q-part
-	P.q = ((error.q * Kp_Q14) >> 14);
+	P.q = CLAMP_INT32_TO_INT16(((int32_t)error.q * ctrl->current.Kp.value) >> ctrl->current.Kp.q);
 	// Q15 * Q15 = Q30, >>110 results in Q20 for more accuracy in the integrator
 	// Later >>5 again to get to Q15 for the output
-	I_current_buffer_q20.q += ((error.q * Ki_Q15) >> 10);
+	ctrl->current.I_buffer_q20.q += (((int32_t)error.q * ctrl->current.Ki.value) >> (ctrl->current.Ki.q - 5));
 	/* windup: note that the effect are Q2 times smaller (because
 	 * the current buffer are in Q20 and the windup increased to Q16)
 	 */
-	I_current_buffer_q20.q -= (winduptQ15.q << 1);
+	ctrl->current.I_buffer_q20.q -= (winduptQ15.q << 1);
 	/* limit the buffer, protection of overrun. To limit to the max
 	 * output voltage (Q15) set the limits to Q20 and -Q20, because the
 	 * buffer are in Q20 and will be every time shift back to Q15 (for
 	 * better resolution).
 	 */
-	I_current_buffer_q20.q = CLAMP(I_current_buffer_q20.q, -Q20, Q20);
+	ctrl->current.I_buffer_q20.q = CLAMP(ctrl->current.I_buffer_q20.q, -Q20, Q20);
 
-	x = ((I_current_buffer_q20.q >> 5) + P.q);
+	x = ((ctrl->current.I_buffer_q20.q >> 5) + P.q);
 
 	V.q = CLAMP_INT32_TO_INT16(x);
 
@@ -183,7 +266,7 @@ static int16_t multiplicate_two_q15(int16_t q1, int16_t q2){
 }
 
 
-int16_t pi_speed_q15 (int32_t speed_rpm, int32_t speed_rpm_ref, FOC_HandleTypeDef *pHandle_foc){
+int16_t pi_speed_q15 (int32_t speed_rpm, int32_t speed_rpm_ref, Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_foc){
 
 	/*
 	 * Structure of blendig IP/PI controller: P = speed_err * Kp * alpha - speed * Kp * (1-alpha)
@@ -191,24 +274,25 @@ int16_t pi_speed_q15 (int32_t speed_rpm, int32_t speed_rpm_ref, FOC_HandleTypeDe
 	 * 				-> proof: set alpha = 1 than: P = (speed_ref - speed) * Kp = speed_err * Kp  ☑️
 	 */
 	int32_t C, x, Output;
-	x = (speed_rpm_ref << 15) / MAX_SPEED; // = speed_ref_q15
-	int16_t speed_ref_alpha_q15 = multiplicate_two_q15(CLAMP_INT32_TO_INT16(x), alpha_t);
-	x = (speed_rpm << 15) / MAX_SPEED; // = speed_rpm_q15
+	x = (speed_rpm_ref << 15) / ctrl->motor_params.max_speed; // = speed_ref_q15
+	int16_t speed_ref_alpha_q15 = multiplicate_two_q15(CLAMP_INT32_TO_INT16(x), ctrl->alpha);
+	x = (speed_rpm << 15) / ctrl->motor_params.max_speed; // = speed_rpm_q15
 	x = ((int32_t)speed_ref_alpha_q15 - x );
 	x = CLAMP_INT32_TO_INT16(x);
 
-	int32_t P = (x * Kp_s_Q10) >> 10;
+	int32_t P = ((int32_t)x * ctrl->speed.Kp.value) >> ctrl->speed.Kp.q; // P in Q15
 
-	x = (((speed_rpm_ref - speed_rpm) << 15)/MAX_SPEED); // speed_err_q15
+	x = (((speed_rpm_ref - speed_rpm) << 15)/ctrl->motor_params.max_speed); // speed_err_q15
 	debug_error_speed = x;
 	x = CLAMP_INT32_TO_INT16(x);
 
-	I_speed_buffer_q20 += (x * Ki_s_Q13) >> 8;  // error Q15 mult with KiQ13 = I_buf_Q29. than bitshift 13 to Q20
-	I_speed_buffer_q20 = CLAMP(I_speed_buffer_q20, -Q20, Q20);
+	ctrl->speed.I_buffer_q20.q += (((int32_t)x * ctrl->speed.Ki.value) >> (ctrl->speed.Ki.q - 5));  // error Q15 mult with KiQ13 = I_buf_Q29. than bitshift 13 to Q20
+	ctrl->speed.I_buffer_q20.q = CLAMP(ctrl->speed.I_buffer_q20.q, -Q20, Q20);
 
-	C = P + (I_speed_buffer_q20 >> 5);
+	C = P + (ctrl->speed.I_buffer_q20.q >> 5);
 
 	Output = CLAMP_INT32_TO_INT16(C);
+
 	pHandle_foc->I_ref_q15.q = Output;
 	pHandle_foc->I_ref_q15.d = 0;
 

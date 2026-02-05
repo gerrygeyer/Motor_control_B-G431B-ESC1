@@ -27,8 +27,8 @@
 
 
 void init_foc(FOC_HandleTypeDef *pHandle_foc);
-void clear_foc(FOC_HandleTypeDef *pHandle);
-void execute_FOC(FOC_HandleTypeDef *pHandle_foc);
+void clear_foc(FOC_HandleTypeDef *pHandle, Control_Loops *ctrl);
+void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl);
 
 svm_output goto_position(dq_t V);
 

@@ -153,44 +153,44 @@ static void MX_TIM4_Init(void)
 // ############## typedef structs ######################
 
 typedef struct{
-	uint8_t EN_GATE;
-	uint8_t M_PWM;
-	uint8_t nFAULT;
-	uint8_t DC_CAL;
-	uint8_t OC_ADJ;
-	uint8_t M_OC;
-	uint8_t nOCTW;
+	uint8_t EN_GATE;    // Enable gate driver signal
+	uint8_t M_PWM;      // PWM mode control signal
+	uint8_t nFAULT;     // Fault flag (active low)
+	uint8_t DC_CAL;     // DC calibration signal
+	uint8_t OC_ADJ;     // Overcurrent adjustment signal
+	uint8_t M_OC;       // Overcurrent mode signal
+	uint8_t nOCTW;      // Overcurrent and thermal warning flag (active low)
 }ESC_HandleTypeDef;
 
 
 
 typedef struct {
-	float a;
-	float b;
+	float a;    // Phase a component (floating point)
+	float b;    // Phase b component (floating point)
 }ab_f;
 
 typedef struct {
-	int16_t a;
-	int16_t b;
+	int16_t a;    // Phase a component (fixed point)
+	int16_t b;    // Phase b component (fixed point)
 }ab_t;
 
 
 typedef struct {
-	float a;
-	float b;
-	float c;
+	float a;    // Phase a component (floating point)
+	float b;    // Phase b component (floating point)
+	float c;    // Phase c component (floating point)
 }abc_f;
 
 typedef struct {
-	int16_t a;
-	int16_t b;
-	int16_t c;
+	int16_t a;    // Phase a component (16-bit fixed point)
+	int16_t b;    // Phase b component (16-bit fixed point)
+	int16_t c;    // Phase c component (16-bit fixed point)
 }abc_16t;
 
 typedef struct {
-	uint16_t a;
-	uint16_t b;
-	uint16_t c;
+	uint16_t a;    // Phase a component (unsigned 16-bit)
+	uint16_t b;    // Phase b component (unsigned 16-bit)
+	uint16_t c;    // Phase c component (unsigned 16-bit)
 }abc_u16t;
 
 /**
@@ -208,136 +208,136 @@ typedef struct
 
 
 typedef struct {
-	int16_t alpha;
-	int16_t beta;
+	int16_t alpha;    // Alpha axis component in stationary reference frame
+	int16_t beta;     // Beta axis component in stationary reference frame
 }alphabeta_t;
 
 
 
 typedef struct {
-	int16_t d;
-	int16_t q;
+	int16_t d;    // D-axis component in rotating reference frame (16-bit)
+	int16_t q;    // Q-axis component in rotating reference frame (16-bit)
 }dq_t;
 
 typedef struct {
-	int32_t d;
-	int32_t q;
+	int32_t d;    // D-axis component in rotating reference frame (32-bit)
+	int32_t q;    // Q-axis component in rotating reference frame (32-bit)
 }dq_32t;
 
 
 
 
 typedef struct{
-	int16_t sin;
-	int16_t cos;
+	int16_t sin;    // Sine value of the angle (fixed point)
+	int16_t cos;    // Cosine value of the angle (fixed point)
 }angle_t;
 
 
 typedef struct {
-	uint32_t Sa;
-	uint32_t Sb;
-	uint32_t Sc;
+	uint32_t Sa;    // Space vector modulation duty cycle for phase a
+	uint32_t Sb;    // Space vector modulation duty cycle for phase b
+	uint32_t Sc;    // Space vector modulation duty cycle for phase c
 
 }svm_output;
 
 
 typedef struct{
-	uint16_t number;
-	float toruqe;
+	uint16_t number;    // Command number/identifier
+	float toruqe;       // Torque command value [Nm]
 }command;
 
 
 typedef struct {
-	uint8_t state;
-	uint8_t old_state;
-	int16_t speed_command;
+	uint8_t state;              // Current state of the system
+	uint8_t old_state;          // Previous state for state change detection
+	int16_t speed_command;      // Speed command reference value [RPM]
 }data;
 
 typedef struct{
 
-	abc_16t v_abc_t;
+	abc_16t v_abc_t;                    // Three-phase voltage values (16-bit fixed point)
 
-	int32_t speed_ref;
-	int32_t speed;
-	int32_t speed_rad;
+	int32_t speed_ref;                  // Speed reference setpoint [RPM]
+	int32_t speed;                      // Actual motor speed [RPM]
+	int32_t speed_rad;                  // Motor speed in radians per second [rad/s]
 
-	uint16_t theta;
-	uint16_t theta_openloop;
-	angle_t elec_theta_q15;
-	uint8_t foc_mode;
+	uint16_t theta;                     // Electrical rotor angle [0-65535]
+	uint16_t theta_openloop;            // Open-loop electrical angle [0-65535]
+	angle_t elec_theta_q15;             // Electrical angle sine/cosine values (Q15 format)
+	uint8_t foc_mode;                   // FOC operation mode (closeloop/openloop/observer)
 
-	int16_t source_voltage;
-	int16_t temperature;
+	int16_t source_voltage;             // DC bus voltage measurement [V]
+	int16_t temperature;                // System temperature [°C]
 
-	abc_16t V_q15;
-	int16_t Iq_value;
-	int32_t Iq_mean;
+	abc_16t V_q15;                      // Three-phase voltage commands (Q15 format)
+	int16_t Iq_value;                   // Q-axis current value [A]
+	int32_t Iq_mean;                    // Mean Q-axis current for filtering [A]
 
-	dq_t I_ref_q15;
-	ab_t I_ab_q15;
-	alphabeta_t I_alph_bet_q15;
-	dq_t I_dq_q15;
-	dq_t V_dq_q15;
-	alphabeta_t V_alph_bet_q15;
-	abc_16t V_abc_q15;
+	dq_t I_ref_q15;                     // D-Q reference currents (Q15 format)
+	ab_t I_ab_q15;                      // Two-phase currents (Q15 format)
+	alphabeta_t I_alph_bet_q15;         // Alpha-beta currents (Q15 format)
+	dq_t I_dq_q15;                      // D-Q measured currents (Q15 format)
+	dq_t V_dq_q15;                      // D-Q voltage commands (Q15 format)
+	alphabeta_t V_alph_bet_q15;         // Alpha-beta voltage commands (Q15 format)
+	abc_16t V_abc_q15;                  // Three-phase voltage commands (Q15 format)
 
-	int16_t Iq_meas_q15;
+	int16_t Iq_meas_q15;                // Measured Q-axis current (Q15 format)
 
 }FOC_HandleTypeDef;
 
 typedef enum {
-	q18 = 18,
-	q17 = 17,
-	q16 = 16,
-    q15 = 15,
-    q14 = 14,
-    q13 = 13,
-    q12 = 12,
-	Qerror = -1
+	q18 = 18,       // Q18 fixed-point format (18 fractional bits)
+	q17 = 17,       // Q17 fixed-point format (17 fractional bits)
+	q16 = 16,       // Q16 fixed-point format (16 fractional bits)
+    q15 = 15,       // Q15 fixed-point format (15 fractional bits)
+    q14 = 14,       // Q14 fixed-point format (14 fractional bits)
+    q13 = 13,       // Q13 fixed-point format (13 fractional bits)
+    q12 = 12,       // Q12 fixed-point format (12 fractional bits)
+	Qerror = -1     // Error indicator for invalid Q format
 } q_format_t;
 
 typedef struct {
-    int16_t     value;
-    q_format_t q;
+    int16_t     value;    // Fixed-point value (16-bit)
+    q_format_t q;         // Q format specification (number of fractional bits)
 } fixed16_t;
 
 typedef struct {
-	fixed16_t Kp;
-	fixed16_t Ki;
-	dq_32t I_buffer_q20;
-	dq_t windup;
+	fixed16_t Kp;               // Proportional gain (fixed-point)
+	fixed16_t Ki;               // Integral gain (fixed-point)
+	dq_32t I_buffer_q20;        // Integral buffer for D-Q axes (Q20 format)
+	dq_t windup;                // Anti-windup limits for integral terms
 } PID_Controller;
 typedef struct {
-	float Rs;
-	float Ls;
-	float J;
-	float B;
-	float Ke;
-	float bandwidth_current;
-	float bandwidth_speed;
-	float cutoff_freq_div;
-	float max_current;
-	float max_voltage;
-	float max_speed;
+	float Rs;                   // Stator resistance [Ohm]
+	float Ls;                   // Stator inductance [H]
+	float J;                    // Rotor inertia [kg*m^2]
+	float B;                    // Viscous friction coefficient [Nm*s/rad]
+	float Ke;                   // Back-EMF constant [V/rad/s]
+	float bandwidth_current;    // Current controller bandwidth [rad/s]
+	float bandwidth_speed;      // Speed controller bandwidth [rad/s]
+	float cutoff_freq_div;      // Cutoff frequency divider (dimensionless)
+	float max_current;          // Maximum current limit [A]
+	float max_voltage;          // Maximum voltage limit [V]
+	float max_speed;            // Maximum speed limit [RPM]
 }motor_parameters_f;
 typedef struct {
-	motor_parameters_f motor_params;
-    PID_Controller current;
-    PID_Controller speed;
-	int16_t alpha;
+	motor_parameters_f motor_params;    // Motor physical parameters
+    PID_Controller current;             // Current control loop PI controller
+    PID_Controller speed;               // Speed control loop PI controller
+	int16_t alpha;                      // Low-pass filter coefficient (fixed point)
 } Control_Loops;
 
 
 
 
 typedef struct{
-	float y;
-	float u;
+	float y;    // Output value of the differential equation
+	float u;    // Input value of the differential equation
 }differential_values;
 
 typedef struct{
-	int32_t y;
-	int32_t u;
+	int32_t y;    // Output value (32-bit fixed point)
+	int32_t u;    // Input value (32-bit fixed point)
 }uyt_32;
 
 

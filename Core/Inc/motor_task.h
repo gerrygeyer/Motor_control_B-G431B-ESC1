@@ -22,4 +22,7 @@
 void init_motor_task(void);
 void motor_time_management(void);
 
+Control_Loops* Control_GetLoops(void);
+FOC_HandleTypeDef* FOC_GetValues(void);
+
 #endif /* INC_MOTOR_TASK_H_ */

@@ -15,13 +15,6 @@
 #ifndef SRC_FOC_H_
 #define SRC_FOC_H_
 
-
-#define FROM_ZERO_TO_360		1
-#define FROM_MINUS_180_TO_180	0
-
-#define HIGHSPEED 	0
-#define LOWSPEED 	1
-
 #define ON 			1
 #define OFF			0
 

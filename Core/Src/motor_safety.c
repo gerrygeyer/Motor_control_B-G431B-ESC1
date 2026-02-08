@@ -50,6 +50,7 @@ void safety_gotostart_blocker(Motor* m){
     }
 }
 
+// Stopping the motor by setting the PWM outputs to zero, this is used in fault state and can be used in other states if needed. We can also add a function to start the PWM again if we want to come back from fault state in the future.
 static void PWM_All_Stop(void)
 {
     // Hauptkanäle stoppen
@@ -94,6 +95,18 @@ void motor_check_parameter(TIM_HandleTypeDef *htim){
         Error_Handler();
     }
     // ######################################################
+
+    // ############ CHECK PI CONTROLLER PARAMETERS ##############
+    uint8_t error_counter = 0;
+    if(Control_GetLoops()->current.Ki.q == Qerror) error_counter++;
+    if(Control_GetLoops()->current.Kp.q == Qerror) error_counter++;
+    if(Control_GetLoops()->speed.Ki.q == Qerror) error_counter++;
+    if(Control_GetLoops()->speed.Kp.q == Qerror) error_counter++;
+    
+    if(error_counter > 0){
+        // Error: wrong parameter for PI controller, check the motor parameters and control parameters
+        Error_Handler();
+    }
 
     // Future Work : check other parameters
 

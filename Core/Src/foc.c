@@ -10,19 +10,7 @@
 #include <svm.h>
 #include <foc.h>
 
-// variables/structs
 
-int32_t debug_speed;
-float debug_output_Vq;
-
-abc_16t V_abc_q15;
-alphabeta_t I_alph_bet_q15, V_alph_bet_q15;
-
-dq_t Idq_q15, Vdq_q15, Idq_set_q15;
-ab_t Iab_q15;
-
-//debug
-dq_t Idq_q15_scope, Idq_set_q15_scope;
 
 // ########## STATIC FUNCTIONS BEGIN ##########
 static dq_t park_transformation_q15(alphabeta_t I, angle_t el_theta);
@@ -42,8 +30,6 @@ float debug_current_Iq;
 // init function
 void init_foc(FOC_HandleTypeDef *pHandle){
 
-	Vdq_q15.q			= 0;
-	Vdq_q15.d = (Q15 >>3); // 0.125 * Vmax
 
 }
 
@@ -77,7 +63,7 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
 
 	break;
 
-	default: // FOC_CLOSELOOP
+	default: // FOC_CLOSELOOP and FOC_CURRENT_CONTROL (same for now, because we only have current control implemented)
 
 		el_theta_q15.sin = sin_t(pHandle_foc->theta);		// get sine and cosine in Q15
 		el_theta_q15.cos = cos_t(pHandle_foc->theta);
@@ -96,22 +82,10 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
 		pHandle_foc->V_alph_bet_q15 = inverse_park_transformation_q15(pHandle_foc->V_dq_q15,pHandle_foc->elec_theta_q15);	// Inverse Park transformation
 		pHandle_foc->V_abc_q15 = inverse_clark_transformation_q15(pHandle_foc->V_alph_bet_q15);	// Inverse Clarke transformation
 
-		pHandle_foc->V_q15.a = pHandle_foc->V_abc_q15.a;
-		pHandle_foc->V_q15.b = pHandle_foc->V_abc_q15.b;
-		pHandle_foc->V_q15.c = pHandle_foc->V_abc_q15.c;
-
-		Idq_q15_scope.d = Idq_q15.d;
-		Idq_q15_scope.q = Idq_q15.q;
-
 	break;
 	}
 
-	pHandle_foc->V_q15.a = pHandle_foc->V_abc_q15.a;
-	pHandle_foc->V_q15.b = pHandle_foc->V_abc_q15.b;
-	pHandle_foc->V_q15.c = pHandle_foc->V_abc_q15.c;
-
 	// for
-	pHandle_foc->Iq_value = Idq_q15.q;
 
 }
 

@@ -27,8 +27,16 @@ int16_t debug_error_speed = 0;
 static q_format_t find_Q_format(float value){
 	float value_abs = fabsf(value);
 	if(value_abs > 1.0f){
-		if(value_abs > 8.0f){
+		if(value_abs > 128.0f){
 			return Qerror; // value too high for fixed16_t
+		}else if(value_abs > 64.0f){
+			return q8; 
+		}else if(value_abs > 32.0f){
+			return q9; 
+		}else if(value_abs > 16.0f){
+			return q10;
+		}else if(value_abs > 8.0f){
+			return q11; 
 		}else if (value_abs > 4.0f) {
 			return q12;
 		}else if (value_abs > 2.0f) {
@@ -48,7 +56,7 @@ static q_format_t find_Q_format(float value){
 	}else{
 			return q18;
 		}
-	if(value_abs == 0.0f){
+	if((value_abs * Q18)== 0.0f){
 		return Qerror; 
 	}
 

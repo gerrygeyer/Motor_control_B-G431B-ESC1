@@ -27,6 +27,9 @@ FOC_HandleTypeDef foc_values;
 Control_Loops ctrl;
 
 
+
+
+
 ab_t gotostart_current = {0,0};
 
 void init_motor_task(void)
@@ -154,6 +157,8 @@ static void highspeed_motor_task(Motor *m)
             break;
         case ST_PARAMETER_ID:
             execute_current_measurement(&foc_values, MOTOR_RUN);
+            
+            
             // Handle fault state
             TIM1->CCR1 = 0;
 			TIM1->CCR2 = 0;
@@ -231,6 +236,16 @@ static void oneHz_motor_task(Motor *m){
     execute_temperature_measurement();
 }
 
+
+Control_Loops* Control_GetLoops(void)
+{
+    return &ctrl;
+}
+
+FOC_HandleTypeDef* FOC_GetValues(void)
+{
+    return &foc_values;
+}
 
 void fault_motor_task(Motor *m)
 {

@@ -160,7 +160,7 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-  motor_check_parameter(&htim4); // check if the encoder parameter is correct
+ 
 
   // first, let´s wait. Be respectful, let others take the lead (depends on the motor number)
   uint16_t wait = 1500 * (MOTOR_NUMBER - 1);
@@ -272,8 +272,11 @@ int main(void)
       Error_Handler();
   }
   */
-
+// ######### INIT MOTOR STATE MACHINE ############
  MotorSM_Init(&g_motor);
+
+ // check if the encoder parameter is correct
+  motor_check_parameter(&htim4); 
 
   /* USER CODE END 2 */
 

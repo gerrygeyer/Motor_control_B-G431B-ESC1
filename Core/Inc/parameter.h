@@ -169,6 +169,10 @@ typedef enum {
     q14 = 14,
     q13 = 13,
     q12 = 12,
+	q11 = 11,
+	q10 = 10,
+	q9 = 9,
+	q8 = 8,
 	Qerror = -1
 } q_format_t;
 

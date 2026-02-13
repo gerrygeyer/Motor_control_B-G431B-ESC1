@@ -8,8 +8,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "motor_types.h"
+#include "parameter.h"
 
-
+param_estimation_t estimation_t;
 
 /* NOTE:
  * This module only sequences the identification procedure.
@@ -29,6 +30,8 @@ void MotorParamEst_Init(Motor* m)
     pidm_enter_idle(m);
     m->pidm_start_request_flag = false;
     m->pidm_abort_request_flag = false;
+    estimation_t.counter = 0;
+    estimation_t.time_div = RS_ESTIMATION_TIME_PER_STEP;
 }
 
 bool MotorParamEst_IsDone(const Motor* m)
@@ -37,7 +40,7 @@ bool MotorParamEst_IsDone(const Motor* m)
     return (m->pidm_state == PIDM_DONE) && (m->pidm_result.valid == true);
 }
 
-void MotorParamEst_Service(Motor* m)
+void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
 {
     if (m == NULL) return;
 
@@ -74,7 +77,10 @@ void MotorParamEst_Service(Motor* m)
             break;
 
         case PIDM_EST_R:
+            
             /* Estimate stator resistance Rs */
+            foc_values->foc_mode = FOC_CURRENT_CONTROL;
+
             /* TODO: apply DC current injection / measure V/I / compute Rs */
             /* When finished, store result and move on */
             /* m->pidm_result.Rs_ohm = ...; */
@@ -106,4 +112,31 @@ void MotorParamEst_Service(Motor* m)
             /* TODO: disable injections / set outputs safe */
             break;
     }
+}
+
+
+
+
+static void resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
+
+    
+    uint32_t step = estimation_t.counter / estimation_t.time_div;
+
+    switch (step)
+    {
+        case 0:
+
+        break;
+        case 1:
+
+        break;
+        case 2:
+
+        break;
+        default:
+           return;
+         break;
+    }  
+    estimation_t.counter++;
+
 }

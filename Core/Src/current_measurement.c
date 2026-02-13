@@ -21,6 +21,7 @@ extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 
 static void ntc_lut_init(void);
+static void median_filter_ab(abi32_t *x);
 
 uint32_t adc_buffer_voltage = 0, adc_buffer_temperature = 0;
 
@@ -29,11 +30,22 @@ abi32_t current_value_t;
 
 abi32_t debug_current, debug_current_raw;
 float IIR_DC_Filter_f, ONE_MINUS_IIR_DC_Filter_f;
+int16_t IIR_Filter_q15, ONE_MINUS_IIR_Filter_q15;
 
 int16_t max_voltage_value_q15;
 
 
 void init_current_measurement(void){
+
+
+	IIR_DC_Filter_f = (PI_MULTIPLY_2 * FOC_TS * 1.0f)/(PI_MULTIPLY_2 * FOC_TS * 1.0f + 1.0f);
+	ONE_MINUS_IIR_DC_Filter_f = (float)(1.0f - IIR_DC_Filter_f);
+
+	float fc = ((float)BANDWIDTH_CURRENT/(float)PI_MULTIPLY_2) * 5.0f; // cutoff frequency for current IIR filter, we set it to 5 times the bandwidth for good noise reduction but still good dynamic response
+	float iir_f = ((PI_MULTIPLY_2 * FOC_TS * fc)/(PI_MULTIPLY_2 * FOC_TS * fc + 1.0f));
+	float one_minus_iir_f = (float)(1.0f - iir_f);
+	IIR_Filter_q15 = (int16_t)((iir_f * (float)Q15) + 0.5f);
+	ONE_MINUS_IIR_Filter_q15 = (int16_t)((one_minus_iir_f * (float)Q15) + 0.5f);
 
 	if(OVER_VOLTAGE_VALUE >= 32 || OVER_VOLTAGE_VALUE <= 0){
 		max_voltage_value_q15 = 32767;
@@ -56,10 +68,10 @@ void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState m
 	I.a = debug_current_raw.a =  (uint16_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
 	I.b =  debug_current_raw.b = (uint16_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
 
-	int32_t fixed_offset = 2125; // value comes from circuit
+	int32_t fixed_offset = 2553; // value comes from circuit -> offset = (0,892/(22,892))*(2^12)*16
 
-	current_value_t.a = -((int32_t)I.a - fixed_offset);
-	current_value_t.b = -((int32_t)I.b - fixed_offset);
+	current_value_t.a = debug_current_raw.a = -((int32_t)I.a - fixed_offset);
+	current_value_t.b = debug_current_raw.b = -((int32_t)I.b - fixed_offset);
 
 	// Convert to Q15 current value -> gain compensation from circuit and resqale to Q15 (max current 32A [Q5])
 	current_value_t.a = debug_current.a = ((int32_t)current_value_t.a * (int32_t)COUNT_TO_AMP_t) >> DIV_MAX_CURRENT_Q15;	// multiplicate with 0.02822876 * 2^15
@@ -89,29 +101,21 @@ void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState m
 		current_value_t.a -= CLAMP_INT32_TO_INT16((int32_t)(cur_val_dc.a + 0.5f)); // +0.5 for correct fixed point rounding
 		current_value_t.b -= CLAMP_INT32_TO_INT16((int32_t)(cur_val_dc.b + 0.5f));
 
+		debug_current.a =(int32_t)(cur_val_dc.a + 0.5f);
+		debug_current.b = (int32_t)(cur_val_dc.b + 0.5f);
 
-	/*
-	 * IIR-Filter with fixed parameter:
-	 * 5500RPM max speed -> 5500 * (polepair/60) Hz // (polepair = 7)
-	 *
-	 *
-	 * a =  0.1678 -> a_q15 = 5497
-	 * (1-a) = 0.8322 -> (1-a)_q15 = 27271
-	 *
-	 */
-
-	 const int16_t a_q15 = 5497;
-	 const int16_t one_minus_a_q15 = 27271;
+	// median_filter_ab(&current_value_t);	
+	
 
 	int32_t x,y, out;
-	x = (a_q15 * current_value_t.a);
-	y = (one_minus_a_q15 * cur_last_val.a);
+	x = (IIR_Filter_q15 * current_value_t.a);
+	y = (ONE_MINUS_IIR_Filter_q15 * cur_last_val.a);
 	out = (x + y + (1 << 14)) >> 15;
 	current_value_t.a = CLAMP_INT32_TO_INT16(out);
 	cur_last_val.a = current_value_t.a;
 
-	x = (a_q15 * current_value_t.b);
-	y = (one_minus_a_q15 * cur_last_val.b);
+	x = (IIR_Filter_q15 * current_value_t.b);
+	y = (ONE_MINUS_IIR_Filter_q15 * cur_last_val.b);
 	out = (x + y + (1 << 14)) >> 15;
 	current_value_t.b = CLAMP_INT32_TO_INT16(out);
 	cur_last_val.b = current_value_t.b;
@@ -233,4 +237,51 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		}
     }
 
+}
+
+
+
+#define MEDIAN_WIN 3 
+
+// Hilfsfunktion zum Sortieren eines kleinen Arrays
+static void sort_int16(int16_t *v, uint8_t len){
+    for(uint8_t i=0; i<len-1; i++){
+        for(uint8_t j=i+1; j<len; j++){
+            if(v[j]<v[i]){
+                int16_t tmp = v[i];
+                v[i] = v[j];
+                v[j] = tmp;
+            }
+        }
+    }
+}
+
+
+static void median_filter_ab(abi32_t *x)
+{
+    static int16_t buf_a[MEDIAN_WIN] = {0};
+    static int16_t buf_b[MEDIAN_WIN] = {0};
+    static uint8_t idx = 0;
+
+    idx = (uint8_t)((idx + 1U) % MEDIAN_WIN);
+
+    /* neuen Wert einspeisen */
+    buf_a[idx] = CLAMP_INT32_TO_INT16(x->a);
+    buf_b[idx] = CLAMP_INT32_TO_INT16(x->b);
+
+    /* Kopien fürs Sortieren */
+    int16_t tmp_a[MEDIAN_WIN];
+    int16_t tmp_b[MEDIAN_WIN];
+
+    for(uint8_t k = 0; k < MEDIAN_WIN; k++){
+        tmp_a[k] = buf_a[k];
+        tmp_b[k] = buf_b[k];
+    }
+
+    sort_int16(tmp_a, MEDIAN_WIN);
+    sort_int16(tmp_b, MEDIAN_WIN);
+
+    /* Median wählen (bei geradem WIN ist das das "obere" mittlere Element) */
+    x->a = tmp_a[MEDIAN_WIN / 2U];
+    x->b = tmp_b[MEDIAN_WIN / 2U];
 }

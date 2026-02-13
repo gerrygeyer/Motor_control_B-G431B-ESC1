@@ -20,7 +20,7 @@
 //#define TIM1_COUNTER	8500
 #define FOC_FREQUENCY	20000	// Hz
 #define TIM1_COUNTER	(4250-1)
-#define FOC_TS			1/FOC_FREQUENCY
+#define FOC_TS			(1.0f/(float)FOC_FREQUENCY)
 
 #define DIVISION_M		20			// For speed control: 10 = the speed control run 10 times slower (1000Hz)
 #define M_FREQUENCY		FOC_FREQUENCY/DIVISION_M
@@ -76,11 +76,11 @@
 #define BANDWIDTH_CURRENT 	5000 // rad
 //#define BANDWIDTH_SPEED		500	// rad
 //#define BANDWIDTH_SPEED		40 //400	// rad
-#define BANDWIDTH_SPEED		80 //400	// rad
+#define BANDWIDTH_SPEED		20 //80 //400	// rad
 
 
 //#define CUTOFFF_FREQU_DIV	65//18 //30 //100 // = w_c/w_s
-#define CUTOFFF_FREQU_DIV	700//18 //30 //100 // = w_c/w_s
+#define CUTOFFF_FREQU_DIV	20 //700//18 //30 //100 // = w_c/w_s
 
 
 
@@ -91,7 +91,7 @@
 // ################ SPEED CONTROL #######################
 
 //#define PI_IP_ALPHA			0.75f //0.85f
-#define PI_IP_ALPHA			0.95f //0.85f
+#define PI_IP_ALPHA			0.5f//0.95f //0.85f
 //#define PI_IP_ALPHA			0.45f
 #define MAXIMUM_RATE_M		(10*(float)MAX_SPEED)/(float)(M_FREQUENCY) // 0.1 sec to become max speed
 
@@ -205,11 +205,7 @@ typedef struct {
 	uint16_t c;
 }abc_u16t;
 
-/**
- * @brief StructDescription
- * @note  Optionaler Hinweis zur Verwendung
- * @see   ReferenzOderModulname
- */
+
 typedef struct
 {
 	int32_t a; /**< Variable a */
@@ -268,9 +264,6 @@ typedef struct {
 
 
 typedef struct{
-
-	abc_16t v_abc_t;
-
 	int32_t speed_ref;
 	int32_t speed;
 	int32_t speed_rad;
@@ -327,9 +320,14 @@ typedef struct {
     PID_Controller speed;
 	int16_t alpha;
 	uint8_t new_parameter_flag;
+	int16_t modulation_index_q15;
 } Control_Loops;
 
+typedef struct{
+	uint32_t counter;
+	uint32_t time_div;
 
+} param_estimation_t;
 
 
 typedef struct{

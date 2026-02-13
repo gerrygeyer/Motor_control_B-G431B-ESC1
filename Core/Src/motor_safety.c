@@ -67,7 +67,6 @@ static void PWM_All_Stop(void)
 // necessary if we add a state to come back from fault state (Future Work)
 static void PWM_All_Start(void)
 {
-	if(MOTOR_DECOUPLE_CURRENT == OFF) return;
     // Hauptkanäle starten
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);

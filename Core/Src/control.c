@@ -21,8 +21,6 @@ int16_t alpha_t;
 // for PI Tuning (online tuning)
 uint16_t bandwidth_speed = 0, bandwidth_current = 0, cutoff_freq_div = 0; 
 
-// debug
-int16_t debug_error_speed = 0;
 
 static q_format_t find_Q_format(float value){
 	float value_abs = fabsf(value);
@@ -65,12 +63,12 @@ static q_format_t find_Q_format(float value){
 
 static void calculate_PI_parameter(Control_Loops *ctrl){
 
-	float kp_c = (ctrl->motor_params.Ls * ctrl->motor_params.bandwidth_current * ctrl->motor_params.max_current)/(float)ctrl->motor_params.max_voltage;	
-	float ki_c = (ctrl->motor_params.Rs * (float)ctrl->motor_params.bandwidth_current * ctrl->motor_params.max_current)/((float)ctrl->motor_params.max_voltage * (float)FOC_FREQUENCY);
+	float kp_c = (ctrl->motor_params.Ls * ctrl->motor_params.bandwidth_current * 32.0f)/(float)ctrl->motor_params.max_voltage;	
+	float ki_c = (ctrl->motor_params.Rs * (float)ctrl->motor_params.bandwidth_current * 32.0f)/((float)ctrl->motor_params.max_voltage * (float)FOC_FREQUENCY);
 
-	float kp_s = (ctrl->motor_params.J * ctrl->motor_params.bandwidth_speed / ctrl->motor_params.Ke) * RPM_TO_RAD_S * (float)ctrl->motor_params.max_speed / ctrl->motor_params.max_current; 
+	float kp_s = (ctrl->motor_params.J * ctrl->motor_params.bandwidth_speed / ctrl->motor_params.Ke) * RPM_TO_RAD_S * (float)ctrl->motor_params.max_speed / 32.0f; 
 	float speed_control_frequency = (float)FOC_FREQUENCY/(float)DIVISION_M;
-	float ki_s = (kp_s * ctrl->motor_params.bandwidth_speed / (ctrl->motor_params.cutoff_freq_div * speed_control_frequency)) * RPM_TO_RAD_S * (float)ctrl->motor_params.max_speed / ctrl->motor_params.max_current;
+	float ki_s = (kp_s * ctrl->motor_params.bandwidth_speed / (ctrl->motor_params.cutoff_freq_div * speed_control_frequency)) * RPM_TO_RAD_S * (float)ctrl->motor_params.max_speed / 32.0f;
 
 	
 	ctrl->current.Kp.q = find_Q_format(kp_c);
@@ -123,29 +121,6 @@ void init_control_functions(Control_Loops *ctrl){
 	ctrl->new_parameter_flag = 0;
 
 	calculate_PI_parameter(ctrl);
-
-	cutoff_freq_div = CUTOFFF_FREQU_DIV;
-	bandwidth_speed = BANDWIDTH_SPEED;
-	bandwidth_current = BANDWIDTH_CURRENT;
-
-	// check kp_c, ki_c , kp_s and ki_s in debug mode for good resolution 
-	float kp_c = (PMSM_LS * (float)BANDWIDTH_CURRENT * (float)Q5)/(float)MAX_VOLTAGE;	// Q5 = MAX_CURRENT = 32A
-	Kp_Q14 = (int16_t)((kp_c + 0.5f) * Q14); // we need a high resolution for low Kp values
-
-	float ki_c = (PMSM_RS_OHM * (float)BANDWIDTH_CURRENT * (float)Q5)/((float)MAX_VOLTAGE * (float)FOC_FREQUENCY);
-	Ki_Q15 = (int16_t)((ki_c + 0.5f) * Q15); 
-
-	float kp_s = (PMSM_J_M_R * (float)BANDWIDTH_SPEED / PMSM_KE) * RPM_TO_RAD_S * (float)MAX_SPEED / 32.0f; // 32.0f = max current
-	Kp_s_Q10 = (int16_t)(kp_s * (float)Q10);
-	// (((KP_SPEED ) * BANDWIDTH_SPEED * DIVISION_M)/(CUTOFFF_FREQU_DIV * FOC_FREQUENCY))
-	float speed_control_frequency = (float)FOC_FREQUENCY/(float)DIVISION_M;
-	float ki_s = (kp_s * (float)BANDWIDTH_SPEED / ((float)CUTOFFF_FREQU_DIV * speed_control_frequency)) * RPM_TO_RAD_S * (float)MAX_SPEED / 32.0f;
-	Ki_s_Q13 = (int16_t)(ki_s * (float)Q13); // ki is so small, that Q18 are better than Q15
-
-	float alpha_f = PI_IP_ALPHA;
-	alpha_t = (alpha_f * (float)Q15);
-
-	I_speed_buffer_q20 = 0;
 }
 
 void clear_control_parameter(Control_Loops *ctrl){
@@ -163,28 +138,6 @@ void update_PI_parameter(Control_Loops *ctrl){
 		calculate_PI_parameter(ctrl);
 		ctrl->new_parameter_flag = 0;
 	}
-
-	// static uint16_t bandwidth_speed_last = 0;
-	// static uint16_t bandwidth_current_last = 0;
-	// static uint16_t cutoff_freq_div_last = 0;
-
-	// check if parameters changed (for online tuning)
-	// if((bandwidth_current != bandwidth_current_last) || (bandwidth_speed != bandwidth_speed_last) || (cutoff_freq_div != cutoff_freq_div_last)){
-
-	// 	bandwidth_current_last = bandwidth_current;
-	// 	bandwidth_speed_last = bandwidth_speed;
-	// 	cutoff_freq_div_last = cutoff_freq_div;
-
-	// 	Kp_Q14 = (int16_t)(((PMSM_LS * (float)bandwidth_current * (float)Q19)/(float)MAX_VOLTAGE) + 0.5f);
-	// 	Ki_Q15 = (int16_t)(((PMSM_RS_OHM * (float)bandwidth_current * (float)Q20)/((float)MAX_VOLTAGE * (float)FOC_FREQUENCY)) + 0.5f);
-
-	// 	float kp_s = (PMSM_J_M_R * (float)bandwidth_speed / PMSM_KE) * RPM_TO_RAD_S * (float)MAX_SPEED / 32.0f; // 32.0f = max current
-	// 	Kp_s_Q10 = (int16_t)(kp_s * (float)Q10);
-	// 	// (((KP_SPEED ) * BANDWIDTH_SPEED * DIVISION_M)/(CUTOFFF_FREQU_DIV * FOC_FREQUENCY))
-	// 	float speed_control_frequency = (float)FOC_FREQUENCY/(float)DIVISION_M;
-	// 	float ki_s = (kp_s * (float)bandwidth_speed / ((float)cutoff_freq_div * speed_control_frequency)) * RPM_TO_RAD_S * (float)MAX_SPEED / 32.0f;
-	// 	Ki_s_Q13 = (int16_t)(ki_s * (float)Q13); // ki is so small, that Q18 are better than Q15
-	// }
 
 }
 
@@ -292,6 +245,7 @@ int16_t pi_speed_q15 (int32_t speed_rpm, int32_t speed_rpm_ref, Control_Loops *c
 		ctrl->speed.windup.q = 0;
 		return 0;
 	}
+
 	/*
 	 * Structure of blendig IP/PI controller: P = speed_err * Kp * alpha - speed * Kp * (1-alpha)
 	 * 		-> we can simplify it to P = (speed_ref * alpha - speed) * Kp
@@ -307,7 +261,6 @@ int16_t pi_speed_q15 (int32_t speed_rpm, int32_t speed_rpm_ref, Control_Loops *c
 	int32_t P = ((int32_t)x * ctrl->speed.Kp.value) >> ctrl->speed.Kp.q; // P in Q15
 
 	x = (((speed_rpm_ref - speed_rpm) << 15)/ctrl->motor_params.max_speed); // speed_err_q15
-	debug_error_speed = x;
 	x = CLAMP_INT32_TO_INT16(x);
 
 	ctrl->speed.I_buffer_q20.q += (((int32_t)x * ctrl->speed.Ki.value) >> (ctrl->speed.Ki.q - 5));  // error Q15 mult with KiQ13 = I_buf_Q29. than bitshift 13 to Q20
@@ -318,6 +271,7 @@ int16_t pi_speed_q15 (int32_t speed_rpm, int32_t speed_rpm_ref, Control_Loops *c
 	Output = CLAMP_INT32_TO_INT16(C);
 
 	pHandle_foc->I_ref_q15.q = Output;
+	// pHandle_foc->I_ref_q15.q = ((int16_t)(0.5f * (float)Q15)) >> 5;;
 	pHandle_foc->I_ref_q15.d = 0;
 
 	return (Output);

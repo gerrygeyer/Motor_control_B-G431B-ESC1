@@ -251,12 +251,10 @@ void data_log_speed_current_500Hz(FOC_HandleTypeDef *pHandle_foc, uint8_t system
 			send_fault_counter++;
 		}
 
-
 	if (send_fault_counter > 100){
 		send_fault_counter = 0;
 	}
 //}
-
 }
 
 

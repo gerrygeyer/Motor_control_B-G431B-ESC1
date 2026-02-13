@@ -11,6 +11,7 @@
 #include "motor_sm.h"
 #include "motor_types.h"
 #include "motor_events.h"
+#include "motor_param_est.h"
 
 /* External event flags */
 // extern volatile bool oc_trip;
@@ -247,6 +248,7 @@ static void State_ClosedLoop(SM_StateMachine* self, void* eventData)
 {
     Motor* m = SM_GetMotor();
     m->state = ST_CLOSEDLOOP;
+    m->speed_ref = 500;
 }
 
 static void State_OpenLoop(SM_StateMachine* self, void* eventData)
@@ -269,6 +271,7 @@ static void State_ParameterId(SM_StateMachine* self, void* eventData)
     Motor* m = SM_GetMotor();
     m->state = ST_PARAMETER_ID;
 
+    MotorParamEst_Init(m);
     /* TODO: Parameter-ID-Mode initialisieren / gewünschte Aktion starten */
 }
 

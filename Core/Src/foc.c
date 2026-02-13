@@ -6,6 +6,7 @@
 #include <current_measurement.h>
 
 #include "control.h"
+#include "parameter.h"
 #include <encoder.h>
 #include <svm.h>
 #include <foc.h>
@@ -19,8 +20,7 @@ static alphabeta_t inverse_park_transformation_q15(dq_t V, angle_t elec_theta);
 static abc_16t inverse_clark_transformation_q15(alphabeta_t v);
 static dq_t error_fct(dq_t ref, dq_t val);
 static dq_t iir_current_dq_filter_q15(dq_t i);
-static void median_filter_d_t(int16_t *data);
-static void median_filter_q_t(int16_t *data);
+
 // ########## STATIC FUNCTIONS END ##########
 
 // Debug
@@ -39,8 +39,8 @@ void clear_foc(FOC_HandleTypeDef *pHandle, Control_Loops *ctrl){ // need this fo
 
 }
 
+
 void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
-	angle_t el_theta_q15;
 
 	// for change the parameter online
 	update_PI_parameter(ctrl);
@@ -65,18 +65,11 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
 
 	default: // FOC_CLOSELOOP and FOC_CURRENT_CONTROL (same for now, because we only have current control implemented)
 
-		el_theta_q15.sin = sin_t(pHandle_foc->theta);		// get sine and cosine in Q15
-		el_theta_q15.cos = cos_t(pHandle_foc->theta);
+		pHandle_foc->elec_theta_q15.sin = sin_t(pHandle_foc->theta);		// get sine and cosine in Q15
+		pHandle_foc->elec_theta_q15.cos = cos_t(pHandle_foc->theta);
 
 		pHandle_foc->I_alph_bet_q15 = clark_transformation_q15(pHandle_foc->I_ab_q15);	// Clarke transformation
-		pHandle_foc->I_dq_q15 = park_transformation_q15(pHandle_foc->I_alph_bet_q15, el_theta_q15);	// Park transformation
-
-		/*
-			*  	Median Filter (solve Problem of noise spikes)
-			*/
-
-		median_filter_d_t(&pHandle_foc->I_dq_q15.d);
-		median_filter_q_t(&pHandle_foc->I_dq_q15.q);
+		pHandle_foc->I_dq_q15 = park_transformation_q15(pHandle_foc->I_alph_bet_q15, pHandle_foc->elec_theta_q15);	// Park transformation
 
 		pHandle_foc->V_dq_q15 = PI_id_iq_Q15(error_fct(pHandle_foc->I_ref_q15, pHandle_foc->I_dq_q15),ctrl, pHandle_foc); // PI current control in Q15
 		pHandle_foc->V_alph_bet_q15 = inverse_park_transformation_q15(pHandle_foc->V_dq_q15,pHandle_foc->elec_theta_q15);	// Inverse Park transformation
@@ -291,57 +284,3 @@ static dq_t iir_current_dq_filter_q15(dq_t i){
 }
 
 
-
-#define MEDIAN_WIN 8 
-
-// Hilfsfunktion zum Sortieren eines kleinen Arrays
-static void sort_int16(int16_t *v, uint8_t len){
-    for(uint8_t i=0; i<len-1; i++){
-        for(uint8_t j=i+1; j<len; j++){
-            if(v[j]<v[i]){
-                int16_t tmp = v[i];
-                v[i] = v[j];
-                v[j] = tmp;
-            }
-        }
-    }
-}
-
-
-static void median_filter_d_t(int16_t *data){
-    static int16_t buffer[2][MEDIAN_WIN] = {{0}};
-    static uint8_t idx = 0;
-    idx = (idx+1)%MEDIAN_WIN;
-
-    for(uint8_t i=0; i<2; i++){
-        buffer[i][idx] = data[i]; // neuen Wert speichern
-
-        // Kopie fürs Sortieren machen
-        int16_t temp[MEDIAN_WIN];
-        for(uint8_t k=0; k<MEDIAN_WIN; k++) temp[k]=buffer[i][k];
-
-        sort_int16(temp, MEDIAN_WIN);
-
-        // Median auswählen und zurückschreiben
-        data[i] = temp[MEDIAN_WIN/2];
-    }
-}
-
-static void median_filter_q_t(int16_t *data){
-    static int16_t buffer[2][MEDIAN_WIN] = {{0}};
-    static uint8_t idx = 0;
-    idx = (idx+1)%MEDIAN_WIN;
-
-    for(uint8_t i=0; i<2; i++){
-        buffer[i][idx] = data[i]; // neuen Wert speichern
-
-        // Kopie fürs Sortieren machen
-        int16_t temp[MEDIAN_WIN];
-        for(uint8_t k=0; k<MEDIAN_WIN; k++) temp[k]=buffer[i][k];
-
-        sort_int16(temp, MEDIAN_WIN);
-
-        // Median auswählen und zurückschreiben
-        data[i] = temp[MEDIAN_WIN/2];
-    }
-}

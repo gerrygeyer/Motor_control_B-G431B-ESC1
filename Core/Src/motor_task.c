@@ -16,6 +16,7 @@
 #include "svm.h"
 #include "communication.h"
 #include "encoder.h"
+#include "motor_param_est.h"
 #include <stdint.h>
 
 static void highspeed_motor_task(Motor *m);
@@ -25,10 +26,6 @@ static void oneHz_motor_task(Motor *m);
 
 FOC_HandleTypeDef foc_values;
 Control_Loops ctrl;
-
-
-
-
 
 ab_t gotostart_current = {0,0};
 
@@ -158,11 +155,10 @@ static void highspeed_motor_task(Motor *m)
         case ST_PARAMETER_ID:
             execute_current_measurement(&foc_values, MOTOR_RUN);
             
+            MotorParamEst_Service(m, &foc_values);
             
-            // Handle fault state
-            TIM1->CCR1 = 0;
-			TIM1->CCR2 = 0;
-			TIM1->CCR3 = 0;
+            // Handle parameter ID state
+
             break;
         case ST_FAULT:
             // Handle fault state

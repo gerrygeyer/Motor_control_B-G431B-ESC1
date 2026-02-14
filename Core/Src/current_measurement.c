@@ -25,8 +25,6 @@ static void median_filter_ab(abi32_t *x);
 
 uint32_t adc_buffer_voltage = 0, adc_buffer_temperature = 0;
 
-abi32_t current_value_t;
-
 
 abi32_t debug_current, debug_current_raw;
 float IIR_DC_Filter_f, ONE_MINUS_IIR_DC_Filter_f;
@@ -61,6 +59,7 @@ void init_current_measurement(void){
  */
 void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState mode){
 	ab32_t I;
+	abi32_t current_value_t;
 
 	static ab32_t cur_last_val = {0, 0};
 	static ab_f dc_value = {0.0f, 0.0f}, cur_val_dc = {0.0f, 0.0f};
@@ -68,7 +67,7 @@ void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState m
 	I.a = debug_current_raw.a =  (uint16_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
 	I.b =  debug_current_raw.b = (uint16_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
 
-	int32_t fixed_offset = 2553; // value comes from circuit -> offset = (0,892/(22,892))*(2^12)*16
+	int32_t fixed_offset = 2553; // value comes from circuit -> offset = (0.892/(22.892))*(2^12)*16
 
 	current_value_t.a = debug_current_raw.a = -((int32_t)I.a - fixed_offset);
 	current_value_t.b = debug_current_raw.b = -((int32_t)I.b - fixed_offset);
@@ -92,7 +91,6 @@ void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState m
 		cur_val_dc.a = dc_value.a;
 		cur_val_dc.b = dc_value.b;
 		break;
-
 		default:	
 		// use estimatated DC value from stationary mode
 		break;
@@ -106,7 +104,8 @@ void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState m
 
 	// median_filter_ab(&current_value_t);	
 	
-
+	// IIR Filter for noise reduction (in fixed point with Q15 coefficients)
+	// (we need to turn this off, if we use HFI for position estimation, because it needs the raw current values for good results)
 	int32_t x,y, out;
 	x = (IIR_Filter_q15 * current_value_t.a);
 	y = (ONE_MINUS_IIR_Filter_q15 * cur_last_val.a);
@@ -162,7 +161,7 @@ void read_temperature_value(FOC_HandleTypeDef *pHandle_foc){
 	pHandle_foc->temperature = temperature_value;
 }
 
-
+// Precomputed ADC values for NTC temperature points from -10 °C to +140 °C in 10 °C steps
 const uint16_t adc_lut_raw[16] = {
    306, 
    502, 
@@ -240,10 +239,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 }
 
 
+// ############# MEDIAN FILTER #############
 
 #define MEDIAN_WIN 3 
 
-// Hilfsfunktion zum Sortieren eines kleinen Arrays
+// Sort array of int16_t in ascending order (simple bubble sort, since the window is small)
 static void sort_int16(int16_t *v, uint8_t len){
     for(uint8_t i=0; i<len-1; i++){
         for(uint8_t j=i+1; j<len; j++){

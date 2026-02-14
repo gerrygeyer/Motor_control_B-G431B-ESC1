@@ -9,9 +9,9 @@ extern volatile bool ot_trip;
 extern volatile bool ov_trip;  
 
 /* User Inputs */
-extern volatile bool btn_stop_edge;
-extern volatile bool btn_closed_edge;
-extern volatile bool btn_open_edge;
-extern volatile bool btn_gotostart_edge;
+extern volatile bool btn_stop_edge;         // STOP
+extern volatile bool btn_closed_edge;       // CLOSED LOOP
+extern volatile bool btn_open_edge;         // OPEN LOOP
+extern volatile bool btn_gotostart_edge;    // GOTO START
 
 #endif

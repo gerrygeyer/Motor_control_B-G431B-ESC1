@@ -14,10 +14,7 @@
 
 #define MAX_CURRENT 	8.0 //8.0	// A
 #define MAX_VOLTAGE		12.0f 	// V
-//#define MAX_SPEED		7000 // RPM
 #define MAX_SPEED		6000 // RPM
-//#define FOC_FREQUENCY	10000	// Hz
-//#define TIM1_COUNTER	8500
 #define FOC_FREQUENCY	20000	// Hz
 #define TIM1_COUNTER	(4250-1)
 #define FOC_TS			(1.0f/(float)FOC_FREQUENCY)
@@ -46,7 +43,6 @@
 #define PMSM_POLEPAIR 	6	// TEST
 #define PMSM_LAMBDA		0.000129f
 #define PMSM_KE			((3.0f/2.0f)*(float)PMSM_POLEPAIR*PMSM_LAMBDA) 	//Vrms/RPM
-
 #define PMSM_B			0.078985970113088f
 
 // Other

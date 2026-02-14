@@ -97,7 +97,6 @@ void init_communication(void){
  * the function is triggered when data is received
  */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 1);
     if (huart->Instance == USART2) {
         if(RxData[0] == 0xFF){
         	// the data were received correctly

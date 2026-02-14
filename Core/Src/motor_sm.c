@@ -12,6 +12,7 @@
 #include "motor_types.h"
 #include "motor_events.h"
 #include "motor_param_est.h"
+#include "communication.h"
 
 /* External event flags */
 // extern volatile bool oc_trip;
@@ -248,7 +249,6 @@ static void State_ClosedLoop(SM_StateMachine* self, void* eventData)
 {
     Motor* m = SM_GetMotor();
     m->state = ST_CLOSEDLOOP;
-    m->speed_ref = 500;
 }
 
 static void State_OpenLoop(SM_StateMachine* self, void* eventData)
@@ -296,6 +296,11 @@ void MotorSM_Service(Motor* m)
         MTR_Stop(m);
         return;
     }
+    if(m->recive_command_flag){
+        m->recive_command_flag = false;
+        m->speed_ref = get_speed_command();
+    }
+
     if(m->start_request_flag){
         m->start_request_flag = false;
         MTR_RunClosedLoop(m);

@@ -8,23 +8,6 @@
 #ifndef INC_CURRENT_MEASUREMENT_H_
 #define INC_CURRENT_MEASUREMENT_H_
 
-#define SHUNT_MEASRUEMENT_DIRECTION -1
-
-#define ADC_OFFSET_A 	2025 //0x82F  // Offset of 4096/2
-#define ADC_OFFSET_B 	2025 //0x82F  // Offset of 4096/2
-#define ADC_VOLTAGE		3.3f 	// V
-
-#define ADC_MAX_COUNT 4096.0f
-
-
-#define LP_CUTOFF_FREQ 150
-
-#define OFFSET_CAL_COUNT FOC_FREQUENCY
-
-
-
-#define COUNT_TO_AMP_f 			0.02822876f	// float i = (float)(COUNT_TO_AMP_f * ADC_output_value_without_offset)
-
 /*
  * COUNT_TO_AMP_t include two multiplications:
  * 		1. mulitplicate with 0.02822876f
@@ -100,17 +83,7 @@ typedef struct{
 	uint32_t b;
 }ab32_t;
 
-typedef struct{
-	uint16_t oamp1;
-	uint16_t oamp3;
-	uint16_t vbus;
-	uint16_t temp;
-}adc1_ch;
 
-typedef struct{
-	uint16_t oamp2;
-	uint16_t oamp3;
-}adc2_ch;
 
 
 

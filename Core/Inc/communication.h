@@ -20,9 +20,9 @@
 
 #define HUNDERT_COUNTER (FOC_FREQUENCY/100)
 
-void get_information(data* pHandle);
 void automatic_switch_off(void);
 void init_communication(void);
+int16_t get_speed_command(void);
 
 void Collect_And_Send_Data(int16_t signal1, int16_t signal2, int16_t signal3, int16_t signal4);
 void Collect_And_Print_Data(float Data1, float Data2, float Data3, float Data4);

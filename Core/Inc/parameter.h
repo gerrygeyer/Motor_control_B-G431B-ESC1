@@ -109,6 +109,10 @@
 
 #define GOTOSTART_Q_VOLTAGE	2.0f // V
 
+#define MODULATION_INDEX_SINUS	0.785f // 0.707 for sinus
+#define MODULATION_INDEX_SVM	0.866f // 0.866 for SVM
+#define MODULATION_INDEX_MAX	0.95f // 0.95 for safty
+
 
 #define OK			1
 #define NOT_OK		0

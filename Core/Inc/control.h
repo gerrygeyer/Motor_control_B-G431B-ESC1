@@ -8,9 +8,6 @@
 #ifndef INC_CONTROL_H_
 #define INC_CONTROL_H_
 
-//#define RESET	0
-//#define SET		1
-
 void init_control_functions(Control_Loops *ctrl);
 void clear_control_parameter(Control_Loops *ctrl);
 

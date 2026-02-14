@@ -77,6 +77,8 @@ typedef struct {
     volatile bool gotostart_finish_flag;
     volatile bool stop_request_flag;
     volatile bool start_request_flag;
+
+    volatile bool recive_command_flag; // set by UART callback, cleared by Service layer, optional for safety monitoring
 } Motor;
     
 

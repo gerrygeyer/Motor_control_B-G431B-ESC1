@@ -7,5 +7,6 @@ Motor g_motor = {
     .position_info = POS_ENCODER,
     .gotostart_finish_flag = false,
     .stop_request_flag = false,
-    .start_request_flag = false
+    .start_request_flag = false,
+    .recive_command_flag = false
 };

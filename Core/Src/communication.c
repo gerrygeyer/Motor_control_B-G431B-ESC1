@@ -58,10 +58,10 @@ volatile uint16_t sampleCounter = 0;
 
 int16_t send_mean_Iq;
 
-bool transmit_recive_data;
 
 
-volatile bool recive_finish;
+
+
 
 void init_communication(void){
 	HAL_UART_Init(&huart2);;
@@ -75,13 +75,11 @@ void init_communication(void){
  	communication.state 		= MOTOR_STOPP;
  	communication.speed_command	= 0;
 
- 	transmit_recive_data = false;
 
 	if(HAL_UART_Receive_DMA(&huart2, &RxData[0], sizeof(RxData)) != HAL_OK){
 		 Error_Handler();
 	}
 //	HAL_UART_Receive_IT(&huart2, &RxData[0], sizeof(RxData));
-	recive_finish = true;
  	com_counter = 0;
 
  	buffer_flag = LOW;
@@ -102,8 +100,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 //	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 1);
     if (huart->Instance == USART2) {
         if(RxData[0] == 0xFF){
-        	recive_finish = false; // safty, dont read an write at the same time | edit: solved it with lower IQR priority
-        	transmit_recive_data = true;
         	// the data were received correctly
         	communication.state = (uint8_t)RxData[1];
         	communication.speed_command = (int16_t)(RxData[3] | (RxData[2]<<8));
@@ -133,14 +129,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 				}
 
         	}
-        	communication.old_state = communication.old_state;
+        	communication.old_state = communication.state;
         	// we have connection
         	recive_motor_command();
         	// limit the input for safty
         	communication.speed_command = (communication.speed_command > MAX_SPEED)? MAX_SPEED: communication.speed_command;
         	communication.speed_command = (communication.speed_command< -MAX_SPEED)? -MAX_SPEED: communication.speed_command;
+			g_motor.recive_command_flag = true; 
 			g_motor.speed_ref = communication.speed_command;
-        	recive_finish = true;
         }else{
         	// the data was received incorrectly, delete the memory
         	RxData[0] = 0x00;
@@ -151,18 +147,53 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     }
 //    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 0);
 }
-
-
-
-void get_information(data* pHandle){	// old function, delete later
-	if(recive_finish){
-	pHandle->state = communication.state;
-	pHandle->speed_command = communication.speed_command;
-	}
+int16_t get_speed_command(void){
+	return communication.speed_command;
 }
 
 
+void data_log_speed_current_500Hz(FOC_HandleTypeDef *pHandle_foc, uint8_t system_state){
+	static uint16_t send_fault_counter = 0;
+	static uint8_t send_value_buffer[10] = {0,0,0,0,0,0,0,0,0,0};
 
+		const uint8_t header1 = 0xF9;
+		const uint8_t header2 = 0xF7;
+		const uint8_t footer = 0x53;
+
+
+		int16_t iq_meas 	= pHandle_foc->Iq_meas_q15;
+		int16_t speed		= pHandle_foc->speed;
+		uint16_t battery	= pHandle_foc->source_voltage;
+		uint8_t state		= system_state;
+
+		send_value_buffer[0] = (header1);
+		send_value_buffer[1] = (header2);
+		send_value_buffer[2] = (state);
+		send_value_buffer[3] = iq_meas;
+		send_value_buffer[4] = (iq_meas >> 8);
+		send_value_buffer[5] = (speed);
+		send_value_buffer[6] = (speed >> 8);
+		send_value_buffer[7] = (battery);
+		send_value_buffer[8] = (battery >> 8);
+		send_value_buffer[9] = (footer);
+//		HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_value_buffer, 9);
+		if (huart2.gState == HAL_UART_STATE_READY){
+			status_send = HAL_UART_Transmit_DMA(&huart2, (uint8_t*)send_value_buffer, 10);
+			if(status_send != HAL_OK){
+				send_fault_counter++;
+			}
+		}else{
+			send_fault_counter++;
+		}
+
+	if (send_fault_counter > 100){
+		send_fault_counter = 0;
+	}
+//}
+}
+
+
+// ######## DEBUGGING FUNCTION ########
 
 void Collect_And_Print_Data(float Data1, float Data2, float Data3, float Data4){
 
@@ -214,47 +245,6 @@ void Collect_And_Print_Data(float Data1, float Data2, float Data3, float Data4){
 	break;
 
 	}
-}
-
-
-void data_log_speed_current_500Hz(FOC_HandleTypeDef *pHandle_foc, uint8_t system_state){
-	static uint16_t send_fault_counter = 0;
-	static uint8_t send_value_buffer[10] = {0,0,0,0,0,0,0,0,0,0};
-
-		const uint8_t header1 = 0xF9;
-		const uint8_t header2 = 0xF7;
-		const uint8_t footer = 0x53;
-
-
-		int16_t iq_meas 	= pHandle_foc->Iq_meas_q15;
-		int16_t speed		= pHandle_foc->speed;
-		uint16_t battery	= pHandle_foc->source_voltage;
-		uint8_t state		= system_state;
-
-		send_value_buffer[0] = (header1);
-		send_value_buffer[1] = (header2);
-		send_value_buffer[2] = (state);
-		send_value_buffer[3] = iq_meas;
-		send_value_buffer[4] = (iq_meas >> 8);
-		send_value_buffer[5] = (speed);
-		send_value_buffer[6] = (speed >> 8);
-		send_value_buffer[7] = (battery);
-		send_value_buffer[8] = (battery >> 8);
-		send_value_buffer[9] = (footer);
-//		HAL_UART_Transmit_IT(&huart2, (uint8_t*)send_value_buffer, 9);
-		if (huart2.gState == HAL_UART_STATE_READY){
-			status_send = HAL_UART_Transmit_DMA(&huart2, (uint8_t*)send_value_buffer, 10);
-			if(status_send != HAL_OK){
-				send_fault_counter++;
-			}
-		}else{
-			send_fault_counter++;
-		}
-
-	if (send_fault_counter > 100){
-		send_fault_counter = 0;
-	}
-//}
 }
 
 

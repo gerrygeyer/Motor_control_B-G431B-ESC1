@@ -120,6 +120,12 @@ void init_control_functions(Control_Loops *ctrl){
 	ctrl->alpha = (int16_t)(PI_IP_ALPHA * (float)Q15);
 	ctrl->new_parameter_flag = 0;
 
+	if(SPACE_VECTOR_MODULAION == ON){
+		ctrl->modulation_index_q15 = (int16_t)(MODULATION_INDEX_SVM * (float)Q15);
+	}else{
+		ctrl->modulation_index_q15 = (int16_t)(MODULATION_INDEX_SINUS * (float)Q15);
+	}
+
 	calculate_PI_parameter(ctrl);
 }
 
@@ -222,7 +228,7 @@ dq_t PI_id_iq_Q15(dq_t error, Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_fo
 	V.q = CLAMP_INT32_TO_INT16(x);
 
 
-	Output = circle_limitation_Q15(V, (Q15-1));
+	Output = circle_limitation_Q15(V, (ctrl->modulation_index_q15));
 
 	ctrl->current.windup.d = (V.d - Output.d);
 	ctrl->current.windup.q = (V.q - Output.q);

@@ -1,4 +1,4 @@
-# Field-Oriented Control (FOC) with STM32 B-G431B-ESC1 
+# Field-Oriented Control (FOC) mit STM32 B-G431B-ESC1 
 
 ## Übersicht der Quellcode-Module
 

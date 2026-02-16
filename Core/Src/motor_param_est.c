@@ -32,6 +32,10 @@ void MotorParamEst_Init(Motor* m)
     m->pidm_abort_request_flag = false;
     estimation_t.counter = 0;
     estimation_t.time_div = RS_ESTIMATION_TIME_PER_STEP;
+    estimation_t.Rs = MEASUREMENT;
+    for (int i = 0; i < 6; i++) {
+        estimation_t.mini_counter[i] = 0;
+    }
 }
 
 bool MotorParamEst_IsDone(const Motor* m)
@@ -119,24 +123,107 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
 
 static void resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
 
+    static int32_t med_voltage[6] = {0,0,0,0,0,0};
+    static int32_t current_injection_q15[6] = {0,0,0,0,0,0};
+
+    const float current_step0 = 0.1f; // A
+    const float current_step1 = 0.2f; // A
+    const float current_step2 = 0.3f; // A
+    const float current_step3 = 0.4f; // A
+    const float current_step4 = 0.5f; // A
+    const float current_step5 = 0.6f; // A
     
-    uint32_t step = estimation_t.counter / estimation_t.time_div;
+    current_injection_q15[0] = (int16_t)((current_step0 / 32.0f) * (float)Q15); // 50% of max current
+    current_injection_q15[1] = (int16_t)((current_step1 / 32.0f) * (float)Q15); // 50% of max current
+    current_injection_q15[2] = (int16_t)((current_step2 / 32.0f) * (float)Q15);
+    current_injection_q15[3] = (int16_t)((current_step3 / 32.0f) * (float)Q15);
+    current_injection_q15[4] = (int16_t)((current_step4 / 32.0f) * (float)Q15);
+    current_injection_q15[5] = (int16_t)((current_step5 / 32.0f) * (float)Q15);
 
-    switch (step)
-    {
-        case 0:
+    switch (estimation_t.Rs) {
+        case MEASUREMENT:
+            
+
+    uint16_t step = estimation_t.counter / estimation_t.time_div;
+    uint16_t half_time_steps = (estimation_t.counter / (estimation_t.time_div / 2)) - (step * 2);
+
+        switch (step)
+        {
+            case 0:
+                pHandle_foc->I_ref_q15.q = 0;
+                pHandle_foc->I_ref_q15.d = current_injection_q15[0];
+                if(half_time_steps != 0){   // take median of first half of the time step to get a stable voltage measurement
+                    if(estimation_t.mini_counter[step]  < 100){      
+                        med_voltage[step] += pHandle_foc->V_dq_q15.d;
+                        estimation_t.mini_counter[step]  ++;
+                    }
+                }
+            break;
+            case 1:
+                pHandle_foc->I_ref_q15.q = 0;
+                pHandle_foc->I_ref_q15.d = current_injection_q15[1];
+                if(half_time_steps != 0){ 
+                    if(estimation_t.mini_counter[step]  < 100){      
+                    med_voltage[step] += pHandle_foc->V_dq_q15.d;
+                    estimation_t.mini_counter[step]  ++;
+                    }
+            }
+            break;
+            case 2:
+                pHandle_foc->I_ref_q15.q = 0;
+                pHandle_foc->I_ref_q15.d = current_injection_q15[2];
+                if(half_time_steps != 0){ 
+                if(estimation_t.mini_counter[step]  < 100){      
+                    med_voltage[step] += pHandle_foc->V_dq_q15.d;
+                    estimation_t.mini_counter[step]  ++;
+                }
+            }
+            break;
+            case 3:
+                pHandle_foc->I_ref_q15.q = 0;
+                pHandle_foc->I_ref_q15.d = current_injection_q15[3];
+                if(half_time_steps != 0){ 
+                if(estimation_t.mini_counter[step]  < 100){      
+                    med_voltage[step] += pHandle_foc->V_dq_q15.d;
+                    estimation_t.mini_counter[step]  ++;
+                }
+            }
+            break;
+            case 4:
+                pHandle_foc->I_ref_q15.q = 0;
+                pHandle_foc->I_ref_q15.d = current_injection_q15[4];
+                if(half_time_steps != 0){ 
+                if(estimation_t.mini_counter[step]  < 100){      
+                    med_voltage[step] += pHandle_foc->V_dq_q15.d;
+                    estimation_t.mini_counter[step]  ++;
+                }
+            }
+            break;
+            case 5:
+                pHandle_foc->I_ref_q15.q = 0;
+                pHandle_foc->I_ref_q15.d = current_injection_q15[5];
+                if(half_time_steps != 0){ 
+                if(estimation_t.mini_counter[step]  < 100){      
+                    med_voltage[step] += pHandle_foc->V_dq_q15.d;
+                    estimation_t.mini_counter[step]  ++;
+                }
+            }
+            break;
+
+            default:
+            estimation_t.Rs = CALCULATION;
+            // noch mal auf richtige Voltzahl einsetzen.
+            for(int i = 0; i < 6; i++){
+                med_voltage[i] = med_voltage[i] / (estimation_t.mini_counter[i]); // take average of the voltage measurements
+            }
+            break;
+        }  
+           break;
+        case CALCULATION:
+        lin_reg(current_injection_q15, med_voltage, 6);
 
         break;
-        case 1:
-
-        break;
-        case 2:
-
-        break;
-        default:
-           return;
-         break;
-    }  
-    estimation_t.counter++;
+    
+    }
 
 }

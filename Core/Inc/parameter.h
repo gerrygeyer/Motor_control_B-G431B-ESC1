@@ -176,6 +176,11 @@ typedef enum {
 	Qerror = -1
 } q_format_t;
 
+typedef enum {
+	MEASUREMENT,
+	CALCULATION,
+	RESULT
+}estimation_states;
 typedef struct {
 	float a;
 	float b;
@@ -323,9 +328,12 @@ typedef struct {
 	int16_t modulation_index_q15;
 } Control_Loops;
 
+
 typedef struct{
 	uint32_t counter;
 	uint32_t time_div;
+	estimation_states Rs;
+	int16_t mini_counter[6];
 
 } param_estimation_t;
 

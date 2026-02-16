@@ -112,4 +112,7 @@ uint32_t sqrt_fast_uint(uint32_t n);
  */
 dq_t circle_limitation_Q15(dq_t Vdq, const uint32_t max_output);
 
+// linear regression for parameter estimation
+ab_t lin_reg(const int32_t *x, const int32_t *y, uint32_t n);
+
 #endif /* INC_FOC_MATH_H_ */

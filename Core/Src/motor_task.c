@@ -154,11 +154,11 @@ static void highspeed_motor_task(Motor *m)
             break;
         case ST_PARAMETER_ID:
             execute_current_measurement(&foc_values, MOTOR_RUN);
-            
+            foc_values.foc_mode = FOC_CURRENT_CONTROL;
             MotorParamEst_Service(m, &foc_values);
-            
-            // Handle parameter ID state
 
+            execute_FOC(&foc_values, &ctrl);
+            
             break;
         case ST_FAULT:
             // Handle fault state

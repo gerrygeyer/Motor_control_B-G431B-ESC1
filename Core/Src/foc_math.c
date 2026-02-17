@@ -184,28 +184,4 @@ dq_t circle_limitation_Q15(dq_t Vdq, const uint32_t max_output){
 
 
 
-ab_t lin_reg(const int32_t *x, const int32_t *y, uint32_t n) {
-	// Validate input pointers and number of samples to avoid undefined behavior
-	if (x == NULL || y == NULL || n == 0U) {
-		return (ab_t){0, 0};
-	}
-	int32_t sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
-	for (uint32_t i = 0; i < n; i++) {
-		sum_x += x[i];
-		sum_y += y[i];
-		sum_xy += (int32_t)(((int64_t)x[i] * (int64_t)y[i]) >> 15); // Q15 Multiplikation mit 64-Bit-Zwischenergebnis
-		sum_xx += (int32_t)(((int64_t)x[i] * (int64_t)x[i]) >> 15); // Q15 Multiplikation mit 64-Bit-Zwischenergebnis
-	}
-
-	int32_t denominator = (int32_t)(((int64_t)n * sum_xx - (int64_t)sum_x * sum_x) >> 15); // Q15 Multiplikation, 64-bit safe
-	if (denominator == 0) {
-		return (ab_t){0, 0}; // Vermeidung von Division durch Null
-	}
-
-	int64_t num = (int64_t)n * sum_xy - (int64_t)sum_x * sum_y;
-	int16_t a = (int16_t)(num / denominator);
-	int16_t b = (int16_t)(((int64_t)sum_y - (int64_t)a * (int64_t)sum_x) / (int64_t)n);
-
-	return (ab_t){a, b};
-}
 

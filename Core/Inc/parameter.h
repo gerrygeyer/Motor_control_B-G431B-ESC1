@@ -7,6 +7,8 @@
 
 #ifndef INC_PARAMETER_H_
 #define INC_PARAMETER_H_
+#include "stm32g4xx.h"
+// #include <cinttypes>
 #include <stdint.h>
 
 
@@ -158,8 +160,15 @@ typedef enum{
 	FOC_OPENLOOP,
 	FOC_CLOSELOOP,
 	FOC_CURRENT_CONTROL,
-	FOC_OBSERVER
+	FOC_OBSERVER, 
+	FOC_HFI
 } FOC_Mode;
+
+typedef enum{
+	PROCESS_UNSUCCESS = 0,
+	PROCESS_SUCCESS,
+	PROCESS_ERROR
+} Status;
 
 typedef enum {
 	q18 = 18,
@@ -267,6 +276,11 @@ typedef struct {
 }data;
 
 
+typedef struct{
+	float a;
+	float one_min_a;
+	float y_last;
+} iir_filter_f;
 
 typedef struct{
 	int32_t speed_ref;
@@ -330,10 +344,23 @@ typedef struct {
 
 
 typedef struct{
-	uint32_t counter;
-	uint32_t time_div;
+	// estimation for Rs
 	estimation_states Rs;
-	int16_t mini_counter[6];
+	uint32_t counter_Rs;
+	uint32_t time_div_Rs;
+	int16_t mini_counter_Rs[6];
+	int32_t med_voltage_Rs[6];
+	int32_t current_injection_q15[6];
+	float est_Rs;
+	// estimation for Ls
+	estimation_states Ls;
+	uint32_t counter_Ls;
+	uint32_t time_div_Ls;
+	uint16_t hfi_angle_increment;
+	int16_t hfi_voltage_q15;
+	int16_t mini_counter_Ls[3];
+	int32_t med_current_Ls[3];
+	float est_Ls;
 
 } param_estimation_t;
 

@@ -314,6 +314,10 @@ void MotorSM_Service(Motor* m)
         btn_stop_edge = false;
         MTR_Stop(m);
     }
+    if (btn_parameter_id_edge) {
+        btn_parameter_id_edge = false;
+        MTR_ParameterId(m);
+    }
 
     if (btn_closed_edge) {
         btn_closed_edge = false;

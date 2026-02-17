@@ -13,5 +13,6 @@ extern volatile bool btn_stop_edge;         // STOP
 extern volatile bool btn_closed_edge;       // CLOSED LOOP
 extern volatile bool btn_open_edge;         // OPEN LOOP
 extern volatile bool btn_gotostart_edge;    // GOTO START
+extern volatile bool btn_parameter_id_edge; // PARAMETER ID
 
 #endif

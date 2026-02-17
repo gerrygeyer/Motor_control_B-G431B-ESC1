@@ -154,11 +154,14 @@ static void highspeed_motor_task(Motor *m)
             break;
         case ST_PARAMETER_ID:
             execute_current_measurement(&foc_values, MOTOR_RUN);
-            foc_values.foc_mode = FOC_CURRENT_CONTROL;
             MotorParamEst_Service(m, &foc_values);
 
             execute_FOC(&foc_values, &ctrl);
-            
+            pwm_output = get_PWM_OUTPUT_Q15(foc_values.V_abc_q15);
+            TIM1->CCR1 = pwm_output.Sa;
+            TIM1->CCR2 = pwm_output.Sb; 
+            TIM1->CCR3 = pwm_output.Sc;
+
             break;
         case ST_FAULT:
             // Handle fault state

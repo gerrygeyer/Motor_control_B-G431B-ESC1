@@ -106,18 +106,29 @@ void execute_current_measurement(FOC_HandleTypeDef *pHandle_foc, CurrMeasState m
 	
 	// IIR Filter for noise reduction (in fixed point with Q15 coefficients)
 	// (we need to turn this off, if we use HFI for position estimation, because it needs the raw current values for good results)
-	int32_t x,y, out;
-	x = (IIR_Filter_q15 * current_value_t.a);
-	y = (ONE_MINUS_IIR_Filter_q15 * cur_last_val.a);
-	out = (x + y + (1 << 14)) >> 15;
-	current_value_t.a = CLAMP_INT32_TO_INT16(out);
-	cur_last_val.a = current_value_t.a;
+	switch (pHandle_foc->foc_mode)
+	{
+		case FOC_HFI:
+			// do nothing, because we need the raw current values for good results in HFI
+		break;
+		default:
+		{
+			int32_t x,y, out;
+			x = (IIR_Filter_q15 * current_value_t.a);
+			y = (ONE_MINUS_IIR_Filter_q15 * cur_last_val.a);
+			out = (x + y + (1 << 14)) >> 15;
+			current_value_t.a = CLAMP_INT32_TO_INT16(out);
+			cur_last_val.a = current_value_t.a;
 
-	x = (IIR_Filter_q15 * current_value_t.b);
-	y = (ONE_MINUS_IIR_Filter_q15 * cur_last_val.b);
-	out = (x + y + (1 << 14)) >> 15;
-	current_value_t.b = CLAMP_INT32_TO_INT16(out);
-	cur_last_val.b = current_value_t.b;
+			x = (IIR_Filter_q15 * current_value_t.b);
+			y = (ONE_MINUS_IIR_Filter_q15 * cur_last_val.b);
+			out = (x + y + (1 << 14)) >> 15;
+			current_value_t.b = CLAMP_INT32_TO_INT16(out);
+			cur_last_val.b = current_value_t.b;
+		}
+		break;
+	}
+
 
 	pHandle_foc->I_ab_q15.a = CLAMP_INT32_TO_INT16(current_value_t.a);
 	pHandle_foc->I_ab_q15.b = CLAMP_INT32_TO_INT16(current_value_t.b);

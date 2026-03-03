@@ -21,7 +21,7 @@ extern Control_Loops ctrl;
 
 static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t* result);
 static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t* result);
-static Status backEMF_measurement_timing(Motor *m,FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result);
+// static Status backEMF_measurement_timing(Motor *m,FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result);
 
 param_estimation_t estimation_t;
 
@@ -154,15 +154,15 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
         case PIDM_EST_Ke:
             /* Estimate back-EMF constant Ke */
             foc_values->foc_mode = FOC_CLOSELOOP;
-            Status backEMF_status = backEMF_measurement_timing(m,foc_values, &m->pidm_result);
-            if(backEMF_status == PROCESS_SUCCESS) {
-                foc_values->V_abc_q15 = (abc_16t){0,0,0};
-                m->pidm_state = PIDM_EST_J;
-            }
-            if(backEMF_status == PROCESS_ERROR) {
-                foc_values->V_abc_q15 = (abc_16t){0,0,0};
-                m->pidm_state = PIDM_ERROR;
-            }
+            // Status backEMF_status = backEMF_measurement_timing(m,foc_values, &m->pidm_result);
+            // if(backEMF_status == PROCESS_SUCCESS) {
+            //     foc_values->V_abc_q15 = (abc_16t){0,0,0};
+            //     m->pidm_state = PIDM_EST_J;
+            // }
+            // if(backEMF_status == PROCESS_ERROR) {
+            //     foc_values->V_abc_q15 = (abc_16t){0,0,0};
+            //     m->pidm_state = PIDM_ERROR;
+            // }
             break;
 
         case PIDM_EST_J:
@@ -510,7 +510,7 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
 
         ctrl.motor_params.Ls = estimation_t.est_Ls;
         ctrl.motor_params.Rs = estimation_t.est_Rs;
-        ctrl.motor_params.alpha = 0.2f;
+        ctrl.alpha = 0.2f;
         ctrl.motor_params.bandwidth_speed = 20.0f;
         ctrl.motor_params.cutoff_freq_div = 10.0f;
         calculate_PI_parameter(&ctrl);
@@ -529,23 +529,23 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
 
 
 
-static Status backEMF_measurement_timing(Motor *m,FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result){
+// static Status backEMF_measurement_timing(Motor *m,FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result){
 
-    uint16_t step = estimation_t.counter_Ke / estimation_t.time_div_Ke;
+//     uint16_t step = estimation_t.counter_Ke / estimation_t.time_div_Ke;
 
-    m->speed_ref = 500; // set a speed reference to get the motor spinning for Ke estimation
+//     m->speed_ref = 500; // set a speed reference to get the motor spinning for Ke estimation
 
-    if(abs(pHandle_foc->I_ref_q15.q) > MAX_ESTIMATION_CURRENT) return PROCESS_ERROR; // if the current exceeds the maximum estimation current, we abort the estimation to protect the motor and the system. This can happen if the motor is stalled or if there is a problem with the current control loop.
+//     if(abs(pHandle_foc->I_ref_q15.q) > MAX_ESTIMATION_CURRENT) return PROCESS_ERROR; // if the current exceeds the maximum estimation current, we abort the estimation to protect the motor and the system. This can happen if the motor is stalled or if there is a problem with the current control loop.
 
-    switch (step)
-    {
-        case 0:
-        case 1:
-        case 2:
-        if() 
-            break;
-    }
+//     switch (step)
+//     {
+//         case 0:
+//         case 1:
+//         case 2:
+//         if() 
+//             break;
+//     }
 
     
-return PROCESS_UNSUCCESS;
-}
+// return PROCESS_UNSUCCESS;
+// }

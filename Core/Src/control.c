@@ -61,7 +61,7 @@ static q_format_t find_Q_format(float value){
 	}
 }
 
-static void calculate_PI_parameter(Control_Loops *ctrl){
+void calculate_PI_parameter(Control_Loops *ctrl){
 
 	float kp_c = (ctrl->motor_params.Ls * ctrl->motor_params.bandwidth_current * 32.0f)/(float)ctrl->motor_params.max_voltage;	
 	float ki_c = (ctrl->motor_params.Rs * (float)ctrl->motor_params.bandwidth_current * 32.0f)/((float)ctrl->motor_params.max_voltage * (float)FOC_FREQUENCY);
@@ -109,6 +109,7 @@ void init_control_functions(Control_Loops *ctrl){
 	ctrl->motor_params.max_current = MAX_CURRENT;
 	ctrl->motor_params.max_voltage = MAX_VOLTAGE;
 	ctrl->motor_params.max_speed = MAX_SPEED;
+	ctrl->motor_params.max_speed_rad = (float)MAX_SPEED * RPM_TO_RAD_S; // convert to rad/s in q15 format
 	ctrl->motor_params.bandwidth_current = BANDWIDTH_CURRENT;
 	ctrl->motor_params.bandwidth_speed = BANDWIDTH_SPEED;
 	ctrl->motor_params.cutoff_freq_div = CUTOFFF_FREQU_DIV;

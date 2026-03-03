@@ -34,6 +34,7 @@ typedef enum {
     PIDM_START,
     PIDM_EST_R,
     PIDM_EST_L,
+    PIDM_EST_Ke,
     PIDM_EST_J,
     PIDM_DONE,
     PIDM_ERROR
@@ -42,6 +43,7 @@ typedef enum {
 typedef struct {
     float Rs_ohm;
     float Ls_h;
+    float Ke_vrpm;
     float J_kgm2;
     bool  valid;
 } motor_param_result_t;

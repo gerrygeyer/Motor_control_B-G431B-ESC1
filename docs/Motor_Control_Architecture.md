@@ -261,17 +261,27 @@ void MotorSM_Service(Motor* m)
         MTR_Stop(m);
         return;
     }
+    if(m->recive_command_flag){
+        m->recive_command_flag = false;
+        m->speed_ref = get_speed_command();
+    }
+
     if(m->start_request_flag){
         m->start_request_flag = false;
         MTR_RunClosedLoop(m);
     }
     if(m->gotostart_finish_flag){
+        // m->gotostart_finish_flag = false; <-- do not reset here
         MTR_Stop(m);
     }
 
     if (btn_stop_edge) {
         btn_stop_edge = false;
         MTR_Stop(m);
+    }
+    if (btn_parameter_id_edge) {
+        btn_parameter_id_edge = false;
+        MTR_ParameterId(m);
     }
 
     if (btn_closed_edge) {
@@ -292,6 +302,81 @@ void MotorSM_Service(Motor* m)
 ```
 
 Interne Flags (`start_request_flag`, `stop_request_flag`, `gotostart_finish_flag`), Schutzereignisse (`oc_trip`) und Tasterflanken (`btn_*_edge`) werden hier auf die entsprechenden API‑Funktionen (`MTR_*`) abgebildet. Der Zustandsautomat selbst arbeitet ausschließlich mit diesen abstrakten Ereignissen und bleibt dadurch unabhängig von den konkreten Eingangssignalen.
+
+
+
+## Automatische Rs-Schätzung (Statorwiderstand)
+
+Die Funktion `resistor_measurement_timing()` schätzt den Statorwiderstand `Rs` automatisch, indem mehrere d-Achsen-Stromstufen injiziert und die zugehörigen d-Achsen-Spannungswerte ausgewertet werden. Die Implementierung ist als Zustandsmaschine aufgebaut (`MEASUREMENT` → `CALCULATION`).
+
+---
+
+### 1) Messphase (MEASUREMENT)
+
+- Es wird bewusst kein Drehmoment angefordert:
+  I_ref_q15.q = 0
+- Der d-Strom wird stufenweise gesetzt:
+  I_ref_q15.d = estimation_t.current_injection_q15[step]
+- Die aktive Stromstufe wird über den Zeit-/Schrittzähler bestimmt:
+  step = counter_Rs / time_div_Rs
+
+Um Einschwingeffekte zu vermeiden, wird pro Stufe erst nach einer kurzen Einschwingphase gemessen. Anschließend werden bis zu 100 Samples des Reglerausgangs V_dq_q15.d aufsummiert:
+
+  estimation_t.med_voltage_Rs[step] += pHandle_foc->V_dq_q15.d
+  estimation_t.mini_counter_Rs[step]++
+
+Nach Abarbeitung aller 6 Stromstufen werden die Spannungen pro Stufe gemittelt.
+
+---
+
+### 2) Spannungsskalierung (Q15 → Volt)
+
+V_dq_q15.d liegt im Q15-Format (normiert) vor. Zur Umrechnung in eine physikalische Spannung wird skaliert mit:
+
+  ``med_voltage_Rs[i] = (med_voltage_Rs[i] * source_voltage) >> 15``
+
+Wobei  `source_voltage` die vom Board gemessene Quellenspannung im Q10 Format ist. Statt direkt die Spannung zu halbieren (Vdc/2) wird das zum schluss mit 
+
+estimation_t.est_Rs = estimation_t.est_Rs * 0.5f
+
+für eine bessere Auflösung Realisiert.
+
+---
+
+### 3) Auswertung (CALCULATION)
+
+Nach Abschluss aller Messstufen werden die Stromreferenzen zurückgesetzt:
+
+  I_ref_q15.d = 0
+  I_ref_q15.q = 0
+
+Anschließend wird Rs über eine lineare Regression aus den Messpaaren (Id, Vd) bestimmt:
+
+ ``estimation_t.est_Rs = lin_reg(estimation_t.current_injection_q15, estimation_t.med_voltage_Rs, 6)``
+
+Die Regression nutzt den stationären Zusammenhang:
+
+  V_d ≈ R_s · I_d
+
+Durch mehrere Stromstufen ist die Schätzung robuster gegenüber Offset, Quantisierung und Messrauschen als eine Einzelpunktmessung.
+
+---
+
+### 4) Regressionsfunktion lin_reg()
+
+Die Funktion berechnet die Steigung einer Ausgleichsgeraden durch den Ursprung:
+
+  m = Σ(x_i · y_i) / Σ(x_i²)
+
+Im Kontext der Rs-Schätzung gilt:
+
+  m ≈ R_s
+
+Da sowohl Zähler als auch Nenner denselben Q-Skalierungsfaktor besitzen, hebt sich dieser im Quotienten auf und es kann direkt ein Float-Wert zurückgegeben werden:
+
+  return (float)sum_xy / (float)sum_xx
+
+
 
 
 

@@ -39,6 +39,10 @@ float lin_reg(const int32_t *x, const int32_t *y, uint32_t n);
 
 
 #define RS_ESTIMATION_TIME_PER_STEP (FOC_FREQUENCY/2) // 0.5 seconds per step
-#define LS_ESTIMATION_TIME_PER_STEP (FOC_FREQUENCY) // 1 second per step
+#define LS_ESTIMATION_TIME_PER_STEP (FOC_FREQUENCY*2) // 2 seconds per step
+#define KE_ESTIMATION_TIME_PER_STEP (FOC_FREQUENCY*2) // 2 seconds per step
+
+#define MAX_ESTIMATION_CURRENT      (2 << 10)       // 2A in Q10 format, for current injection during estimation    
+
 
 #endif /* MOTOR_PARAM_EST_H */

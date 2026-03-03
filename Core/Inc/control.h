@@ -11,6 +11,8 @@
 void init_control_functions(Control_Loops *ctrl);
 void clear_control_parameter(Control_Loops *ctrl);
 
+void calculate_PI_parameter(Control_Loops *ctrl);
+
 void reset_pi_integrator(Control_Loops *ctrl);
 
 void update_PI_parameter(Control_Loops *ctrl);

@@ -1,5 +1,7 @@
 /*
  * parameter estimation.c
+ * 
+ * 
 */
 
 #include "motor_param_est.h"
@@ -11,10 +13,15 @@
 #include "parameter.h"
 #include "motor_events.h"
 #include "motor_hfi.h"
+#include "control.h"
 #include <math.h>
 
-static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc);
-static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc);
+
+extern Control_Loops ctrl;
+
+static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t* result);
+static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t* result);
+static Status backEMF_measurement_timing(Motor *m,FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result);
 
 param_estimation_t estimation_t;
 
@@ -118,8 +125,7 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
             break;
 
         case PIDM_START:
-            /* Put motor in a safe, deterministic condition for identification */
-            /* Example: disable speed loop, set a known injection mode, reset integrators */
+
             /* TODO: initialize injections / observers */
             m->pidm_state = PIDM_EST_R;
             break;
@@ -128,10 +134,8 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
             
             /* Estimate stator resistance Rs */
             foc_values->foc_mode = FOC_CURRENT_CONTROL;
-            if (resistor_measurement_timing(foc_values) == PROCESS_SUCCESS) {
-                /* TODO: apply DC current injection / measure V/I / compute Rs */
-                /* When finished, store result and move on */
-                /* m->pidm_result.Rs_ohm = ...; */
+            if (resistor_measurement_timing(foc_values, &m->pidm_result) == PROCESS_SUCCESS) {
+
                 foc_values->V_abc_q15 = (abc_16t){0,0,0}; // set voltage to zero after estimation is done
                 m->pidm_state = PIDM_EST_L;
             }
@@ -141,11 +145,23 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
         case PIDM_EST_L:
             /* Estimate inductance Ls */
             foc_values->foc_mode = FOC_HFI;
-            if(induction_measurement_timing(foc_values) == PROCESS_SUCCESS) {
-            /* TODO: apply AC injection / measure response / compute L */
-            /* m->pidm_result.Ls_h = ...; */
+            if(induction_measurement_timing(foc_values, &m->pidm_result) == PROCESS_SUCCESS) {
             foc_values->V_abc_q15 = (abc_16t){0,0,0};
-            m->pidm_state = PIDM_EST_J;
+            m->pidm_state = PIDM_EST_Ke;
+            }
+            break;
+
+        case PIDM_EST_Ke:
+            /* Estimate back-EMF constant Ke */
+            foc_values->foc_mode = FOC_CLOSELOOP;
+            Status backEMF_status = backEMF_measurement_timing(m,foc_values, &m->pidm_result);
+            if(backEMF_status == PROCESS_SUCCESS) {
+                foc_values->V_abc_q15 = (abc_16t){0,0,0};
+                m->pidm_state = PIDM_EST_J;
+            }
+            if(backEMF_status == PROCESS_ERROR) {
+                foc_values->V_abc_q15 = (abc_16t){0,0,0};
+                m->pidm_state = PIDM_ERROR;
             }
             break;
 
@@ -174,7 +190,7 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
 
 float debug_voltage1, debug_voltage2, debug_voltage3, debug_voltage4, debug_voltage5, debug_voltage6;
 
-static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
+static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result){
 
 
     switch (estimation_t.Rs) {
@@ -270,8 +286,8 @@ static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
         pHandle_foc->I_ref_q15.d = 0;
         estimation_t.est_Rs = lin_reg(estimation_t.current_injection_q15, estimation_t.med_voltage_Rs, 6);
 
-        estimation_t.est_Rs = estimation_t.est_Rs/2.0f; // Rs = Rab / 2 because we are measuring line to line voltage but we need phase voltage for the calculation of Rs
-        
+        estimation_t.est_Rs = estimation_t.est_Rs * 0.5; 
+
         return PROCESS_SUCCESS; // estimation done
         break;
 
@@ -313,8 +329,10 @@ float lin_reg(const int32_t *x, const int32_t *y, uint32_t n)
     return (float)sum_xy / (float)sum_xx;
 }
 
+int32_t mag;
 float debug_induction1, debug_induction2, debug_induction3;
-static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
+int16_t V_div_debug1, V_div_debug2, V_div_debug3;
+static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result){
 
     uint16_t hfi_injection_freq[3];
 
@@ -347,7 +365,7 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
 
     int16_t sin, cos;
     int16_t I,Q;
-    int32_t mag;
+    // int32_t mag;
     
     switch(estimation_t.Ls) {
         case MEASUREMENT:
@@ -375,11 +393,12 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
                     mag = (int32_t)I + (int32_t)Q; // magnitude of the current response in Q10
 
                     mag = sqrt_fast_uint((mag << 10)); // take square root and scale back to Q10
-
+                    
+                    mag = (mag << 1);
 
                     if(half_time_steps != 0){   // take median of first half of the time step to get a stable voltage measurement
                         if(estimation_t.mini_counter_Ls[step]  < 100){      
-                            estimation_t.med_current_Ls[step] += (mag << 1); // for Ls estimation we are interested in the q-axis current
+                            estimation_t.med_current_Ls[step] += mag; 
                             estimation_t.mini_counter_Ls[step]  ++;
                         }
                     }
@@ -403,11 +422,11 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
                     mag = (int32_t)I + (int32_t)Q; // magnitude of the current response in Q10
 
                     mag = sqrt_fast_uint((mag << 10)); // take square root and scale back to Q10
-
+                    mag = (mag << 1);
 
                     if(half_time_steps != 0){   // take median of first half of the time step to get a stable voltage measurement
                         if(estimation_t.mini_counter_Ls[step]  < 100){      
-                            estimation_t.med_current_Ls[step] += mag; // for Ls estimation we are interested in the q-axis current
+                            estimation_t.med_current_Ls[step] += mag;
                             estimation_t.mini_counter_Ls[step]  ++;
                         }
                     }
@@ -432,6 +451,8 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
 
                     mag = sqrt_fast_uint((mag << 10)); // take square root and scale back to Q10
 
+                    mag = (mag << 1);
+
 
                     if(half_time_steps != 0){   // take median of first half of the time step to get a stable voltage measurement
                         if(estimation_t.mini_counter_Ls[step]  < 100){      
@@ -452,22 +473,49 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
         float La[3] = {0};
         int16_t V_div_I[3] = {0};
         for(int i = 0; i < 3; i++){
+            
             estimation_t.med_current_Ls[i] = estimation_t.med_current_Ls[i] / (estimation_t.mini_counter_Ls[i]); // take average of the current measurements
-            V_div_I[i] = (((int32_t)estimation_t.hfi_voltage_q15 * pHandle_foc->source_voltage))/estimation_t.med_current_Ls[i];
-            float x = (((float)V_div_I[i] * (float)V_div_I[i]) / (float)Q10) - (estimation_t.est_Rs * estimation_t.est_Rs); // V^2 / I^2 + Rs^2, scaled back to Q15
+            V_div_I[i] = ((((int32_t)estimation_t.hfi_voltage_q15 * pHandle_foc->source_voltage))/(estimation_t.med_current_Ls[i]));
+            float x = (((float)V_div_I[i]/(float)Q16) * ((float)V_div_I[i] / (float)Q16)) - (estimation_t.est_Rs * estimation_t.est_Rs); // V^2 / I^2 + Rs^2, scaled back to Q15
             float w = PI_MULTIPLY_2 * (float)hfi_injection_freq[i]; // angular frequency of the injection in rad/s
-            La[i] = sqrtf(x) / w;
+            if(x < 0){
+                La[i] = -1; // if the value under the square root is negative, we set the inductance to zero to avoid NaN values. This can happen if the current response is very small, which can be the case for very low inductance or high resistance.
+            }else{
+                La[i] = sqrtf(x) / w;
+            }
         }
 
+        V_div_debug1 = estimation_t.med_current_Ls[0];
+        V_div_debug2 = estimation_t.med_current_Ls[1];
+        V_div_debug3 = estimation_t.med_current_Ls[2];
 
         debug_induction1 = (float)La[0]; // for debugging: convert back to microhenry
         debug_induction2 = (float)La[1]; // for debugging: convert back to microhenry
         debug_induction3 = (float)La[2]; // for debugging: convert back to microhenry
 
-        estimation_t.est_Ls = (La[0] + La[1] + La[2]) / 3.0f; // take average of the three measurements for better accuracy
+        uint8_t valid_measurements = 3;
+        for(uint8_t i = 0; i < 3; i++){
+            if(La[i] < 0){
+                La[i] = 0; // if the inductance is negative, we set it to zero to avoid NaN values in the final result. This can happen if the current response is very small, which can be the case for very low inductance or high resistance.
+                valid_measurements--;
+            }
+        }
+        if(valid_measurements > 0){
+            estimation_t.est_Ls = (La[0] + La[1] + La[2]) / (float)valid_measurements;
+            result->Ls_h = estimation_t.est_Ls;
+        }else{
+            estimation_t.est_Ls = 0; // if all measurements are invalid, we set the inductance to zero
+            return PROCESS_UNSUCCESS;
+        }
+
+        ctrl.motor_params.Ls = estimation_t.est_Ls;
+        ctrl.motor_params.Rs = estimation_t.est_Rs;
+        ctrl.motor_params.alpha = 0.2f;
+        ctrl.motor_params.bandwidth_speed = 20.0f;
+        ctrl.motor_params.cutoff_freq_div = 10.0f;
+        calculate_PI_parameter(&ctrl);
+
         return PROCESS_SUCCESS; // estimation done
-
-
         break;
         default:
 
@@ -476,4 +524,28 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc){
     }
 
     return PROCESS_UNSUCCESS;
+}
+
+
+
+
+static Status backEMF_measurement_timing(Motor *m,FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result){
+
+    uint16_t step = estimation_t.counter_Ke / estimation_t.time_div_Ke;
+
+    m->speed_ref = 500; // set a speed reference to get the motor spinning for Ke estimation
+
+    if(abs(pHandle_foc->I_ref_q15.q) > MAX_ESTIMATION_CURRENT) return PROCESS_ERROR; // if the current exceeds the maximum estimation current, we abort the estimation to protect the motor and the system. This can happen if the motor is stalled or if there is a problem with the current control loop.
+
+    switch (step)
+    {
+        case 0:
+        case 1:
+        case 2:
+        if() 
+            break;
+    }
+
+    
+return PROCESS_UNSUCCESS;
 }

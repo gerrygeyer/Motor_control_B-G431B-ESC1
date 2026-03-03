@@ -283,9 +283,15 @@ typedef struct{
 } iir_filter_f;
 
 typedef struct{
+	uint32_t count_to_angle;
+	int16_t uint2rad_q15;
+}speed_calc_parameter_t;
+
+typedef struct{
 	int32_t speed_ref;
 	int32_t speed;
-	int32_t speed_rad;
+	int32_t speed_q15;
+	speed_calc_parameter_t speed_calc_param;
 
 	uint16_t theta;
 	uint16_t theta_openloop;
@@ -332,6 +338,7 @@ typedef struct {
 	float max_current;
 	float max_voltage;
 	float max_speed;
+	float max_speed_rad;
 }motor_parameters_f;
 typedef struct {
 	motor_parameters_f motor_params;
@@ -361,6 +368,10 @@ typedef struct{
 	int16_t mini_counter_Ls[3];
 	int32_t med_current_Ls[3];
 	float est_Ls;
+	// estimation for Ke
+	estimation_states Ke;
+	uint32_t counter_Ke;
+	uint32_t time_div_Ke;
 
 } param_estimation_t;
 

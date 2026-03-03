@@ -35,7 +35,7 @@ void init_motor_task(void)
     init_control_functions(&ctrl);
     init_SVM();
     init_current_measurement();
-    init_encoder();
+    init_encoder(&foc_values);
     init_communication();
 
 }

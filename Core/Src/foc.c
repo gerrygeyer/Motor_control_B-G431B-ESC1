@@ -64,6 +64,12 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
 	break;
 
 	case FOC_HFI:
+		pHandle_foc->elec_theta_q15.sin = sin_t(pHandle_foc->theta);		// get sine and cosine in Q15
+		pHandle_foc->elec_theta_q15.cos = cos_t(pHandle_foc->theta);
+
+		pHandle_foc->I_alph_bet_q15 = clark_transformation_q15(pHandle_foc->I_ab_q15);	// Clarke transformation
+		pHandle_foc->I_dq_q15 = park_transformation_q15(pHandle_foc->I_alph_bet_q15, pHandle_foc->elec_theta_q15);
+
 		pHandle_foc->V_alph_bet_q15 = inverse_park_transformation_q15(pHandle_foc->V_dq_q15,pHandle_foc->elec_theta_q15);
 		pHandle_foc->V_abc_q15 = inverse_clark_transformation_q15(pHandle_foc->V_alph_bet_q15);
 		// dont use PI control, clear the integral parts

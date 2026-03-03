@@ -4,6 +4,7 @@
  *  Created on: Aug 6, 2024
  *      Author: Gerry Geyer
  */
+#include "parameter.h"
 #include <encoder.h>
 #include <main.h>
 #include <observer.h>
@@ -16,13 +17,14 @@ extern uint32_t operation_time_us;
 static int16_t iir_lp_speed_q15(int16_t val);
 
 uint16_t encoder_count;// speed_lp_buffer;
-uint32_t count_to_angle; // pre-calc
+
 
 int32_t rotor_position = 0;
 
 
-void init_encoder(void){
-	count_to_angle = COUNT_TO_EL_ANGLE;
+void init_encoder(FOC_HandleTypeDef *pHandle_foc){
+	pHandle_foc->speed_calc_param.count_to_angle = COUNT_TO_EL_ANGLE;
+	pHandle_foc->speed_calc_param.uint2rad_q15 =  CLAMP((((float)Q15 / ((float)MAX_SPEED * RPM_TO_RAD_S)) + 0.5f), 0, Q16); // convert to rad/s in q16 format
 }
 
 // set the encoder (timer4) to 0, needed for zero position calibration
@@ -55,7 +57,7 @@ void calc_rotor_position(FOC_HandleTypeDef *pHandle_foc){
 	rotor_position 	= (int32_t)x;	// we need the global variable rotor_position for speed calculation
 
 	// ############## TRANSFORM TO ELECTRICAL ANGLE #################
-	uint16_t encoder_count_uint = (encoder_count * count_to_angle); 
+	uint16_t encoder_count_uint = (encoder_count * pHandle_foc->speed_calc_param.count_to_angle); 
 	pHandle_foc->theta = (uint16_t)encoder_count_uint;
 }
 
@@ -81,7 +83,11 @@ int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc){
 	speed_filter = CLAMP_INT32_TO_INT16(speed_filter);
 	speed_filter = iir_lp_speed_q15((int16_t)speed_filter);
 
+	if(speed_filter > MAX_SPEED) speed_filter = MAX_SPEED;
+	else if(speed_filter < -MAX_SPEED) speed_filter = -MAX_SPEED;
+
 	pHandle_foc->speed = (int16_t)speed_filter;
+	pHandle_foc->speed_q15 = ((int32_t)pHandle_foc->speed << 15)/ MAX_SPEED;
 	return (pHandle_foc->speed); 
 }
 

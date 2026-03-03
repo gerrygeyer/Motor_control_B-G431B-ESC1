@@ -19,7 +19,7 @@
 
 
 
-void init_encoder(void);
+void init_encoder(FOC_HandleTypeDef *pHandle_foc);
 void set_encoder_to_zero(FOC_HandleTypeDef *pHandle_foc);
 void calc_rotor_position(FOC_HandleTypeDef *pHandle_foc);
 int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc);

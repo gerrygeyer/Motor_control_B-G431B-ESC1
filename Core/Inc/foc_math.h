@@ -53,7 +53,7 @@
 #define Q29					(536870912-1)
 #define Q30					(1073741824-1)
 
-#define RAD2RPMQ15			3431
+#define RPM2RADQ15			3431
 #define DIV_2_SQRT3Q14		18919
 
 // shortcuts (new)

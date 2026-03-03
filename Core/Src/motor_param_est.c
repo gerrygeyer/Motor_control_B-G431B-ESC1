@@ -9,6 +9,7 @@
 #include "current_measurement.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include "motor_types.h"
 #include "parameter.h"
 #include "motor_events.h"
@@ -21,7 +22,7 @@ extern Control_Loops ctrl;
 
 static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t* result);
 static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t* result);
-// static Status backEMF_measurement_timing(Motor *m,FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result);
+static Status backEMF_measurement_timing(Motor *m, FOC_HandleTypeDef *pHandle_foc, motor_param_result_t *result);
 
 param_estimation_t estimation_t;
 
@@ -84,7 +85,16 @@ void MotorParamEst_Init(Motor* m)
     estimation_t.Ls = MEASUREMENT;
     estimation_t.hfi_voltage_q15 = (int16_t)(max_hfi_injection_voltage * (float)Q15); // 0.1 * Vmax
 
-    
+
+
+
+    estimation_t.counter_Ke = 0;
+    estimation_t.time_div_Ke = KE_ESTIMATION_TIME_PER_STEP;
+    estimation_t.Ke = MEASUREMENT;
+    estimation_t.counter_Ke_measurement = 0;
+    estimation_t.med_Vq15 = 0;
+    estimation_t.med_Iq15 = 0;
+    estimation_t.med_speed_q15 = 0;
 
 }
 
@@ -154,15 +164,15 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
         case PIDM_EST_Ke:
             /* Estimate back-EMF constant Ke */
             foc_values->foc_mode = FOC_CLOSELOOP;
-            // Status backEMF_status = backEMF_measurement_timing(m,foc_values, &m->pidm_result);
-            // if(backEMF_status == PROCESS_SUCCESS) {
-            //     foc_values->V_abc_q15 = (abc_16t){0,0,0};
-            //     m->pidm_state = PIDM_EST_J;
-            // }
-            // if(backEMF_status == PROCESS_ERROR) {
-            //     foc_values->V_abc_q15 = (abc_16t){0,0,0};
-            //     m->pidm_state = PIDM_ERROR;
-            // }
+            Status backEMF_status = backEMF_measurement_timing(m,foc_values, &m->pidm_result);
+            if(backEMF_status == PROCESS_SUCCESS) {
+                foc_values->V_abc_q15 = (abc_16t){0,0,0};
+                m->pidm_state = PIDM_EST_J;
+            }
+            if(backEMF_status == PROCESS_ERROR) {
+                foc_values->V_abc_q15 = (abc_16t){0,0,0};
+                m->pidm_state = PIDM_ERROR;
+            }
             break;
 
         case PIDM_EST_J:
@@ -194,8 +204,7 @@ static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_
 
 
     switch (estimation_t.Rs) {
-        case MEASUREMENT:
-            
+        case MEASUREMENT: {
 
         uint16_t step = estimation_t.counter_Rs / estimation_t.time_div_Rs;
         uint16_t half_time_steps = (estimation_t.counter_Rs / (estimation_t.time_div_Rs / 2)) - (step * 2);
@@ -285,10 +294,15 @@ static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_
         pHandle_foc->I_ref_q15.q = 0;
         pHandle_foc->I_ref_q15.d = 0;
         estimation_t.est_Rs = lin_reg(estimation_t.current_injection_q15, estimation_t.med_voltage_Rs, 6);
-
         estimation_t.est_Rs = estimation_t.est_Rs * 0.5; 
+        estimation_t.Rs = RESULT;
+    }
+        break;
 
+        case RESULT:
+        result->Rs_ohm = estimation_t.est_Rs;
         return PROCESS_SUCCESS; // estimation done
+
         break;
 
 
@@ -368,7 +382,7 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
     // int32_t mag;
     
     switch(estimation_t.Ls) {
-        case MEASUREMENT:
+        case MEASUREMENT: {
             uint16_t step = estimation_t.counter_Ls / estimation_t.time_div_Ls;
             uint16_t half_time_steps = (estimation_t.counter_Ls / (estimation_t.time_div_Ls / 2)) - (step * 2);
 
@@ -467,9 +481,9 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
             }
             estimation_t.counter_Ls++;
 
-
+        }
         break;
-        case CALCULATION:
+        case CALCULATION: {
         float La[3] = {0};
         int16_t V_div_I[3] = {0};
         for(int i = 0; i < 3; i++){
@@ -507,19 +521,23 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
             estimation_t.est_Ls = 0; // if all measurements are invalid, we set the inductance to zero
             return PROCESS_UNSUCCESS;
         }
+        estimation_t.Ls = RESULT;
 
+        break;
+        case RESULT:
         ctrl.motor_params.Ls = estimation_t.est_Ls;
         ctrl.motor_params.Rs = estimation_t.est_Rs;
-        ctrl.alpha = 0.2f;
+        ctrl.alpha = (int16_t)(0.2f * (float)Q15);
         ctrl.motor_params.bandwidth_speed = 20.0f;
         ctrl.motor_params.cutoff_freq_div = 10.0f;
         calculate_PI_parameter(&ctrl);
 
+        result->Ls_h = estimation_t.est_Ls;
+
         return PROCESS_SUCCESS; // estimation done
+        }
         break;
         default:
-
-
         break;
     }
 
@@ -529,23 +547,56 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
 
 
 
-// static Status backEMF_measurement_timing(Motor *m,FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result){
+static Status backEMF_measurement_timing(Motor *m, FOC_HandleTypeDef *pHandle_foc, motor_param_result_t *result) {
 
-//     uint16_t step = estimation_t.counter_Ke / estimation_t.time_div_Ke;
+    switch (estimation_t.Ke) {
+        case MEASUREMENT: {
+            uint16_t step = estimation_t.counter_Ke / estimation_t.time_div_Ke;
 
-//     m->speed_ref = 500; // set a speed reference to get the motor spinning for Ke estimation
+            m->speed_ref = 500;
 
-//     if(abs(pHandle_foc->I_ref_q15.q) > MAX_ESTIMATION_CURRENT) return PROCESS_ERROR; // if the current exceeds the maximum estimation current, we abort the estimation to protect the motor and the system. This can happen if the motor is stalled or if there is a problem with the current control loop.
+            if (abs(pHandle_foc->I_ref_q15.q) > MAX_ESTIMATION_CURRENT) {
+                return PROCESS_ERROR;
+            }
 
-//     switch (step)
-//     {
-//         case 0:
-//         case 1:
-//         case 2:
-//         if() 
-//             break;
-//     }
-
+            switch (step) {
+                case 0:
+                case 1:
+                case 2:
+                    break;
+                default:
+                    if (estimation_t.counter_Ke_measurement < FOC_FREQUENCY) {
+                        estimation_t.counter_Ke_measurement++;
+                        estimation_t.med_Iq15 += abs(pHandle_foc->I_dq_q15.q); // we are interested in the q-axis current for Ke estimation
+                        estimation_t.med_Vq15 += abs(pHandle_foc->V_dq_q15.q); // we are interested in the q-axis voltage for Ke estimation
+                        estimation_t.med_speed_q15 += abs(pHandle_foc->speed_q15);
+                    } else {
+                        estimation_t.med_Iq15 = estimation_t.med_Iq15 / FOC_FREQUENCY; // take average of the current measurements
+                        estimation_t.med_Vq15 = estimation_t.med_Vq15 / FOC_FREQUENCY; // take average of the voltage measurements
+                        estimation_t.med_speed_q15 = estimation_t.med_speed_q15 / FOC_FREQUENCY; // take average of the speed measurements
+                        estimation_t.Ke = CALCULATION;
+                    }
+                    break;
+            }
+        
+        }
+        break;
+        case CALCULATION: {
+            float Vq = ((float)estimation_t.med_Vq15 * (float)pHandle_foc->source_voltage) / (float)Q11; // convert back to real voltage in V (Vq is in Q10, and we need to divide by 2 to get the real voltage (Vdc/2)) 
+            float Iq = ((float)estimation_t.med_Iq15) / (float)Q10; // convert back to real current in A
+            float speed_rad = ((float)estimation_t.med_speed_q15) * ((float)MAX_SPEED * RPM_TO_RAD_S)/ (float)Q15;
+            if(fabs(speed_rad) < 0.01f) { // avoid division by zero and very low speeds which can lead to very high Ke estimates due to noise
+                return PROCESS_ERROR;
+            }
+            estimation_t.est_Ke = (float)PMSM_POLEPAIR * (Vq - estimation_t.est_Rs * Iq) / speed_rad; // Ke = V / omega
+            estimation_t.Ke = RESULT;
+        }
+        break;
+        case RESULT:
+            result->Ke_vrad = estimation_t.est_Ke;
+            return PROCESS_SUCCESS; // estimation done
+            break;
+    }
     
-// return PROCESS_UNSUCCESS;
-// }
+    return PROCESS_UNSUCCESS;
+}

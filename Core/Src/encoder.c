@@ -24,7 +24,7 @@ int32_t rotor_position = 0;
 
 void init_encoder(FOC_HandleTypeDef *pHandle_foc){
 	pHandle_foc->speed_calc_param.count_to_angle = COUNT_TO_EL_ANGLE;
-	pHandle_foc->speed_calc_param.uint2rad_q15 =  CLAMP((((float)Q15 / ((float)MAX_SPEED * RPM_TO_RAD_S)) + 0.5f), 0, Q16); // convert to rad/s in q16 format
+	pHandle_foc->speed_calc_param.uint2rad_q15 =  CLAMP((((float)Q15 / ((float)MAX_SPEED * RPM_TO_RAD_S)) + 0.5f), 0, Q15); // convert to rad/s in q15 format
 }
 
 // set the encoder (timer4) to 0, needed for zero position calibration

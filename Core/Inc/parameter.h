@@ -372,6 +372,11 @@ typedef struct{
 	estimation_states Ke;
 	uint32_t counter_Ke;
 	uint32_t time_div_Ke;
+	uint32_t counter_Ke_measurement;
+	int32_t med_Vq15;
+	int32_t med_Iq15;
+	int32_t med_speed_q15;
+	float est_Ke;
 
 } param_estimation_t;
 

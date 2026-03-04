@@ -305,7 +305,9 @@ Interne Flags (`start_request_flag`, `stop_request_flag`, `gotostart_finish_flag
 
 
 
-### Parameter ID
+### Parameter Schätzverfahren
+
+Die Parameterschätzung wird durch das setzen von 'btn_parameter_id_edge' gestartet. Dabei werden die Werte für $R$, $L$, $K_e$ und $J$ der Reihe nach ermittelt. Sollte ein Verfahren fehl schlagen wird die Schätzung abgebrochen und muss von neuem gestartet werden.
 
 ![Ablaufdiagramm_Parameter_ID](./picture_diagrams/parameter_id.drawio.svg)
 
@@ -384,9 +386,213 @@ Da sowohl Zähler als auch Nenner denselben Q-Skalierungsfaktor besitzen, hebt s
 
 
 
-### Automatische Ls Schätzung (Statorinduktion)
+
+
+### Induktivitätsschätzung (Ls) mittels Hochfrequenzinjektion (HFI)
 
 ![HFI_Struktur](./picture_diagrams/HFI.drawio.svg)
+
+#### Ziel
+Bestimmung der Statorinduktivität **Ls** durch Einspeisung eines kleinen hochfrequenten Spannungssignals. Während der Messung wird angenommen, dass sich der Rotor im Stillstand befindet, sodass die Gegen-EMK vernachlässigt werden kann.
+
+#### Messprinzip
+Es wird eine sinusförmige Spannung in die **d-Achse** injiziert:
+
+\[
+v_d(t) = \hat{V}\sin(\omega t), \quad v_q(t)=0
+\]
+
+Für einen stehenden Motor und kleine Signalamplituden kann das elektrische Verhalten näherungsweise durch ein **RL-Impedanzmodell** beschrieben werden:
+
+\[
+Z(j\omega) = R_s + j\omega L_s
+\]
+
+Der Betrag der Impedanz ergibt sich zu
+
+\[
+|Z| = \sqrt{R_s^2 + (\omega L_s)^2}
+\]
+
+Mit der gemessenen Stromantwortamplitude \(\hat{I}\) und der bekannten injizierten Spannungsamplitude \(\hat{V}\) ergibt sich:
+
+\[
+\frac{\hat{V}}{\hat{I}} = |Z|
+\quad\Rightarrow\quad
+L_s = \frac{1}{\omega}\sqrt{\left(\frac{\hat{V}}{\hat{I}}\right)^2 - R_s^2}
+\]
+
+Um die Robustheit der Schätzung zu erhöhen, wird die Messung bei mehreren Injektionsfrequenzen durchgeführt und die resultierenden Induktivitätswerte anschließend gemittelt.
+
+#### Demodulation der Stromantwort (I/Q-Extraktion)
+
+Das injizierte Signal (\(\sin\) und \(\cos\) der Injektionsfrequenz) ist bekannt. Dadurch kann der gemessene d-Achsenstrom \(i_d\) synchron demoduliert werden:
+
+\[
+I = i_d \cdot \sin(\omega t), \qquad Q = i_d \cdot \cos(\omega t)
+\]
+
+Nach Anwendung eines Tiefpassfilters auf \(I\) und \(Q\) wird der Betrag der Stromantwort berechnet:
+
+\[
+\hat{I} = \sqrt{I^2 + Q^2}
+\]
+
+Durch diese synchrone Demodulation wird die Trägerfrequenz entfernt und eine **DC-Schätzung der Stromamplitude** erhalten (vergleichbar mit einem Lock-In-Verstärker).
+
+#### Implementierungsübersicht (`induction_measurement_timing`)
+
+1. **Injektionsfrequenzen:**  
+   Drei Frequenzen werden nacheinander verwendet:
+   
+   - 800 Hz  
+   - 1000 Hz  
+   - 1200 Hz  
+
+2. **Pro Frequenzschritt:**
+
+   - Berechnung des Winkelinkrements der Injektion aus der Frequenz
+   - Einspeisung der Spannung  
+     
+     \[
+     v_d = \hat{V}\sin(\omega t), \quad v_q = 0
+     \]
+
+   - Synchrone Demodulation des gemessenen Stroms mittels Sinus und Cosinus (I/Q-Demodulation)
+   - Tiefpassfilterung der demodulierten Signale
+   - Berechnung der Stromamplitude  
+     
+     \[
+     \hat{I} = \sqrt{I^2 + Q^2}
+     \]
+
+   - Mittelwertbildung über mehrere Messwerte innerhalb eines Zeitfensters, um eine stabile Stromamplitude zu erhalten
+
+3. **Berechnung der Induktivität**
+
+   Für jede Injektionsfrequenz wird zunächst
+
+   \[
+   \frac{V}{I}
+   \]
+
+   berechnet und anschließend
+
+\[
+L_s = \frac{1}{\omega}\sqrt{\left(\frac{V}{I}\right)^2 - R_s^2}
+\]
+
+   bestimmt.
+
+   Ungültige Messungen (z. B. negativer Ausdruck unter der Wurzel) werden verworfen.
+
+4. **Mittelwertbildung**
+
+   Die final geschätzte Induktivität ergibt sich aus dem Mittelwert aller gültigen Einzelmessungen.
+
+#### Voraussetzungen und Annahmen
+
+- Der Rotor befindet sich während der Messung im Stillstand sodass die Gegen-EMK vernachlässigt werden kann.
+- Die Injektionsamplitude ist klein genug, um das System im **linearen Bereich** zu betreiben.
+- Der Statorwiderstand \(R_s\) wurde zuvor bestimmt und wird für die Berechnung von \(L_s\) verwendet.
+- Die Abtastrate der Strommessung (FOC-Interrupt) ist ausreichend hoch, um die Stromantwort der Injektionsfrequenz zuverlässig zu erfassen.
+
+#### Ergebnis
+
+Die geschätzte Induktivität wird gespeichert in
+
+- `result->Ls_h` (in Henry)
+
+und anschließend in die Motorparameterstruktur übernommen:
+
+- `ctrl.motor_params.Ls`
+
+Nach erfolgreicher Schätzung werden die **PI-Reglerparameter** neu berechnet.
+
+
+
+## Gegen-EMK-Konstante (Ke) Schätzung über stationären Betrieb
+
+### Ziel
+Bestimmung der Gegen-EMK-Konstante **Ke** (Back-EMF constant) im laufenden Betrieb bei **konstanter, niedriger Drehzahl**. Die Schätzung dient als Basis für Modellparameter (z. B. Spannungsmodell) und kann später für Beobachter / Reglerauslegung genutzt werden.
+
+### Messprinzip
+Für eine PMSM im dq-System gilt (vereinfachtes Spannungsmodell):
+
+\[
+v_q = R_s i_q + \omega_e \lambda + L_q \frac{di_q}{dt} + \omega_e L_d i_d
+\]
+
+Für die Messung werden die Bedingungen so gewählt, dass sich das Modell vereinfacht:
+
+- niedrige, konstante Drehzahl (hier: **500 rpm**)
+- stationärer Betrieb: \(\frac{di_q}{dt} \approx 0\)
+- \(i_d \approx 0\) (bzw. keine gezielte d-Achsen-Stromvorgabe)
+
+Dann dominiert:
+
+\[
+v_q \approx R_s i_q + \omega_e \lambda
+\]
+
+Daraus folgt für den Fluss \(\lambda\):
+
+\[
+\lambda \approx \frac{v_q - R_s i_q}{\omega_e}
+\]
+
+Die Gegen-EMK-Konstante wird in der Implementierung als:
+
+\[
+K_e = \frac{v_q - R_s i_q}{\omega_m}
+\]
+
+geschätzt und anschließend auf elektrische Größen umgerechnet (Pole-Pairs):
+
+\[
+\omega_e = p \cdot \omega_m
+\]
+
+**Hinweis zur Definition:** Je nach Literatur wird \(K_e\) entweder bezogen auf \(\omega_m\) (mechanisch) oder \(\omega_e\) (elektrisch) definiert. In dieser Implementierung wird die mechanische Drehzahl verwendet und mit dem Polpaarfaktor skaliert.
+
+### Implementierung (`backEMF_measurement_timing`)
+Die Schätzung ist als Zustandssequenz aufgebaut:
+
+1. **MEASUREMENT**
+   - Vorgabe einer konstanten Drehzahl:
+     - `m->speed_ref = 500` (rpm)
+   - Sicherheitscheck:
+     - Abbruch, wenn \(|i_q|\) einen Grenzwert überschreitet (`MAX_ESTIMATION_CURRENT`)
+   - Mittelung über ein definiertes Messfenster (hier: **1 Sekunde**, da `FOC_FREQUENCY` Samples):
+     - \(\overline{v_q}\) aus `pHandle_foc->V_dq_q15.q`
+     - \(\overline{i_q}\) aus `pHandle_foc->I_dq_q15.q`
+     - \(\overline{\omega}\) aus `pHandle_foc->speed_q15`
+
+2. **CALCULATION**
+   - Rückskalierung der gemittelten Größen:
+     - \(V_q\) in Volt (unter Berücksichtigung von Zwischenkreis/Skalierung)
+     - \(I_q\) in Ampere
+     - \(\omega_m\) in rad/s (aus gemittelter Drehzahl)
+   - Vermeidung numerischer Probleme bei sehr kleinen Drehzahlen:
+     - Abbruch bei \(|\omega_m| < 0.01\,\mathrm{rad/s}\)
+   - Berechnung:
+     \[
+     K_e = p \cdot \frac{V_q - R_s I_q}{\omega_m}
+     \]
+
+3. **RESULT**
+   - Ergebnis wird gespeichert:
+     - `result->Ke_vrad = estimation_t.est_Ke`
+
+### Voraussetzungen und Annahmen
+- Der Motor läuft stabil bei der vorgegebenen Drehzahl, Laständerungen sind gering.
+- Der Stromregler ist aktiv, sodass die Größen \(v_q\) und \(i_q\) aussagekräftig gemittelt werden können.
+- \(R_s\) wurde zuvor identifiziert und ist ausreichend genau.
+- Der Einfluss von \(L\)-Anteilen ist durch stationären Betrieb klein (insbesondere \(\frac{di_q}{dt}\approx 0\)).
+
+### Ergebnis
+- `Ke_vrad` beschreibt die Gegen-EMK-Konstante in der im Projekt verwendeten Definition (bezogen auf \(\omega_m\) und mit Polpaarfaktor).
+- Das Ergebnis kann direkt im Spannungsmodell genutzt werden, z. B. zur Bestimmung von \(\lambda\) oder zur Parametrierung von Beobachtern.
 
 
 
@@ -449,10 +655,6 @@ void calc_rotor_position(void){
 (Unvollständig)
 
 
-
-### Parameter estimation
-
-(Unvollständig)
 
 
 

@@ -511,12 +511,12 @@ Nach erfolgreicher Schätzung werden die **PI-Reglerparameter** neu berechnet.
 
 
 
-## Gegen-EMK-Konstante (Ke) Schätzung über stationären Betrieb
+### Gegen-EMK-Konstante (Ke) Schätzung über stationären Betrieb
 
-### Ziel
+#### Ziel
 Bestimmung der Gegen-EMK-Konstante **Ke** (Back-EMF constant) im laufenden Betrieb bei **konstanter, niedriger Drehzahl**. Die Schätzung dient als Basis für Modellparameter (z. B. Spannungsmodell) und kann später für Beobachter / Reglerauslegung genutzt werden.
 
-### Messprinzip
+#### Messprinzip
 Für eine PMSM im dq-System gilt (vereinfachtes Spannungsmodell):
 
 \[
@@ -555,10 +555,11 @@ geschätzt und anschließend auf elektrische Größen umgerechnet (Pole-Pairs):
 
 **Hinweis zur Definition:** Je nach Literatur wird \(K_e\) entweder bezogen auf \(\omega_m\) (mechanisch) oder \(\omega_e\) (elektrisch) definiert. In dieser Implementierung wird die mechanische Drehzahl verwendet und mit dem Polpaarfaktor skaliert.
 
-### Implementierung (`backEMF_measurement_timing`)
+#### Implementierung (`backEMF_measurement_timing`)
 Die Schätzung ist als Zustandssequenz aufgebaut:
 
 1. **MEASUREMENT**
+   
    - Vorgabe einer konstanten Drehzahl:
      - `m->speed_ref = 500` (rpm)
    - Sicherheitscheck:
@@ -567,7 +568,7 @@ Die Schätzung ist als Zustandssequenz aufgebaut:
      - \(\overline{v_q}\) aus `pHandle_foc->V_dq_q15.q`
      - \(\overline{i_q}\) aus `pHandle_foc->I_dq_q15.q`
      - \(\overline{\omega}\) aus `pHandle_foc->speed_q15`
-
+   
 2. **CALCULATION**
    - Rückskalierung der gemittelten Größen:
      - \(V_q\) in Volt (unter Berücksichtigung von Zwischenkreis/Skalierung)
@@ -584,13 +585,13 @@ Die Schätzung ist als Zustandssequenz aufgebaut:
    - Ergebnis wird gespeichert:
      - `result->Ke_vrad = estimation_t.est_Ke`
 
-### Voraussetzungen und Annahmen
+#### Voraussetzungen und Annahmen
 - Der Motor läuft stabil bei der vorgegebenen Drehzahl, Laständerungen sind gering.
 - Der Stromregler ist aktiv, sodass die Größen \(v_q\) und \(i_q\) aussagekräftig gemittelt werden können.
 - \(R_s\) wurde zuvor identifiziert und ist ausreichend genau.
 - Der Einfluss von \(L\)-Anteilen ist durch stationären Betrieb klein (insbesondere \(\frac{di_q}{dt}\approx 0\)).
 
-### Ergebnis
+#### Ergebnis
 - `Ke_vrad` beschreibt die Gegen-EMK-Konstante in der im Projekt verwendeten Definition (bezogen auf \(\omega_m\) und mit Polpaarfaktor).
 - Das Ergebnis kann direkt im Spannungsmodell genutzt werden, z. B. zur Bestimmung von \(\lambda\) oder zur Parametrierung von Beobachtern.
 

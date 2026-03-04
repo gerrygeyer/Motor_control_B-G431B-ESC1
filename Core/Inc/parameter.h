@@ -44,7 +44,8 @@
 // #define PMSM_POLEPAIR 	7
 #define PMSM_POLEPAIR 	6	// TEST
 #define PMSM_LAMBDA		0.000129f
-#define PMSM_KE			((3.0f/2.0f)*(float)PMSM_POLEPAIR*PMSM_LAMBDA) 	//Vrms/RPM
+#define PMSM_KE			((float)PMSM_POLEPAIR*PMSM_LAMBDA) 	//Vrms/RPM
+#define PMSM_Kt			((3.0f/2.0f)*(float)PMSM_POLEPAIR*PMSM_LAMBDA) 	//Vrms/RPM
 #define PMSM_B			0.078985970113088f
 
 // Other

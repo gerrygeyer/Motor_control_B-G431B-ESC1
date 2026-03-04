@@ -589,16 +589,16 @@ static Status backEMF_measurement_timing(Motor *m, FOC_HandleTypeDef *pHandle_fo
         case CALCULATION: {
             float Vq = ((float)estimation_t.med_Vq15 * (float)pHandle_foc->source_voltage) / (float)Q11; // convert back to real voltage in V (Vq is in Q10, and we need to divide by 2 to get the real voltage (Vdc/2)) 
             float Iq = ((float)estimation_t.med_Iq15) / (float)Q10; // convert back to real current in A
-            float speed_rad = ((float)estimation_t.med_speed_q15) * ((float)MAX_SPEED * RPM_TO_RAD_S)/ (float)Q15;
-            if(fabs(speed_rad) < 0.01f) { // avoid division by zero and very low speeds which can lead to very high Ke estimates due to noise
+            float speed_rpm = ((float)estimation_t.med_speed_q15) * (float)MAX_SPEED / (float)Q15;
+            if(fabs(speed_rpm) < 0.01f) { // avoid division by zero and very low speeds which can lead to very high Ke estimates due to noise
                 return PROCESS_ERROR;
             }
-            estimation_t.est_Ke = (float)PMSM_POLEPAIR * (Vq - estimation_t.est_Rs * Iq) / speed_rad; // Ke = V / omega
+            estimation_t.est_Ke = (float)PMSM_POLEPAIR * (Vq - estimation_t.est_Rs * Iq) / speed_rpm; // Ke = V / omega
             estimation_t.Ke = RESULT;
         }
         break;
         case RESULT:
-            result->Ke_vrad = estimation_t.est_Ke;
+            result->Ke_vrpm = estimation_t.est_Ke;
             return PROCESS_SUCCESS; // estimation done
             break;
     }

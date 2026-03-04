@@ -71,6 +71,7 @@ typedef struct {
 
     /* Parameter-ID (nested SM) control + results */
     volatile motor_pidm_state_t pidm_state;
+    volatile bool pidm_init_done_flag;             
     volatile bool pidm_start_request_flag;         // set by Service/command layer
     volatile bool pidm_abort_request_flag;         // optional abort
     motor_param_result_t pidm_result;

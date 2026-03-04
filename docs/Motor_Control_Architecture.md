@@ -20,7 +20,7 @@ Nachzulesen bei [1].
 [1] Control of Electric Machine Drive Systems | Wiley Online Books. https://onlinelibrary.wiley.com/doi/book/10.1002/ 9780470876541, . – (Accessed on 08/06/2022)
 
 
-### Automat
+## Automat
 
 ![Ablaufdiagramm](./picture_diagrams/Ablaufdiagramm.drawio.svg)
 
@@ -305,13 +305,19 @@ Interne Flags (`start_request_flag`, `stop_request_flag`, `gotostart_finish_flag
 
 
 
-## Automatische Rs-Schätzung (Statorwiderstand)
+### Parameter ID
+
+![Ablaufdiagramm_Parameter_ID](./picture_diagrams/parameter_id.drawio.svg)
+
+
+
+### Automatische Rs-Schätzung (Statorwiderstand)
 
 Die Funktion `resistor_measurement_timing()` schätzt den Statorwiderstand `Rs` automatisch, indem mehrere d-Achsen-Stromstufen injiziert und die zugehörigen d-Achsen-Spannungswerte ausgewertet werden. Die Implementierung ist als Zustandsmaschine aufgebaut (`MEASUREMENT` → `CALCULATION`).
 
 ---
 
-### 1) Messphase (MEASUREMENT)
+#### 1) Messphase (MEASUREMENT)
 
 - Es wird bewusst kein Drehmoment angefordert:
   I_ref_q15.q = 0
@@ -329,7 +335,7 @@ Nach Abarbeitung aller 6 Stromstufen werden die Spannungen pro Stufe gemittelt.
 
 ---
 
-### 2) Spannungsskalierung (Q15 → Volt)
+#### 2) Spannungsskalierung (Q15 → Volt)
 
 V_dq_q15.d liegt im Q15-Format (normiert) vor. Zur Umrechnung in eine physikalische Spannung wird skaliert mit:
 
@@ -343,7 +349,7 @@ für eine bessere Auflösung Realisiert.
 
 ---
 
-### 3) Auswertung (CALCULATION)
+#### 3) Auswertung (CALCULATION)
 
 Nach Abschluss aller Messstufen werden die Stromreferenzen zurückgesetzt:
 
@@ -362,7 +368,7 @@ Durch mehrere Stromstufen ist die Schätzung robuster gegenüber Offset, Quantis
 
 ---
 
-### 4) Regressionsfunktion lin_reg()
+#### 4) Regressionsfunktion lin_reg()
 
 Die Funktion berechnet die Steigung einer Ausgleichsgeraden durch den Ursprung:
 
@@ -377,6 +383,10 @@ Da sowohl Zähler als auch Nenner denselben Q-Skalierungsfaktor besitzen, hebt s
   return (float)sum_xy / (float)sum_xx
 
 
+
+### Automatische Ls Schätzung (Statorinduktion)
+
+![HFI_Struktur](./picture_diagrams/HFI.drawio.svg)
 
 
 

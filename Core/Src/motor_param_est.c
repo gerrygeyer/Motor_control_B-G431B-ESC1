@@ -37,7 +37,7 @@ param_estimation_t estimation_t;
     m->pidm_state = PIDM_IDLE;
     m->pidm_result.valid = false;
 }
-
+/* Info: this function are triggert by sm machine in while loop*/
 void MotorParamEst_Init(Motor* m)
 {
     if (m == NULL) return;
@@ -96,6 +96,8 @@ void MotorParamEst_Init(Motor* m)
     estimation_t.med_Iq15 = 0;
     estimation_t.med_speed_q15 = 0;
 
+
+    m->pidm_init_done_flag = true; 
 }
 
 bool MotorParamEst_IsDone(const Motor* m)
@@ -131,7 +133,10 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
             //     m->pidm_start_request_flag = false;
             //     m->pidm_state = PIDM_START;
             // }
-            m->pidm_state = PIDM_START;
+            if(m->pidm_start_request_flag){
+                m->pidm_start_request_flag = false;
+                m->pidm_state = PIDM_START;
+            }
             break;
 
         case PIDM_START:
@@ -184,12 +189,12 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
             break;
 
         case PIDM_DONE:
-            btn_stop_edge = true;
+            btn_stop_edge = true;           
             /* Hold results until user leaves ST_PARAMETER_ID or starts again */
             break;
 
         case PIDM_ERROR:
-            btn_stop_edge = true;
+            btn_stop_edge = true;         
         default:
             /* Keep motor safe */
             /* TODO: disable injections / set outputs safe */

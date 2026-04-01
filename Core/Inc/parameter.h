@@ -16,7 +16,7 @@
 
 #define MAX_CURRENT 	8.0 //8.0	// A
 #define MAX_VOLTAGE		12.0f 	// V
-#define MAX_SPEED		6000 // RPM
+#define MAX_SPEED		10000 // RPM
 #define FOC_FREQUENCY	20000	// Hz
 #define TIM1_COUNTER	(4250-1)
 #define FOC_TS			(1.0f/(float)FOC_FREQUENCY)
@@ -25,7 +25,7 @@
 #define M_FREQUENCY		FOC_FREQUENCY/DIVISION_M
 #define M_TS			(float)(1.0/(float)M_FREQUENCY)
 
-#define DIVISION_L		1000		// For Voltage measurement: 1000 => 10 Hz
+#define DIVISION_L		100		//  100 => 200 Hz
 #define L_FREQUENCY		FOC_FREQUENCY/DIVISION_L
 
 //#define CURRENT_MEAS_MAX_CURRENT	12.0f; // Ampere
@@ -146,7 +146,11 @@ static void MX_TIM4_Init(void)
 */
 
 // ############## typedef structs ######################
-
+typedef struct {
+    int16_t buf[7];
+    uint8_t head;     // next write position: 0..7-1
+    uint8_t filled;   // how many valid samples (0..7)
+}  RingBuf7n16_t;
 typedef struct{
 	uint8_t EN_GATE;
 	uint8_t M_PWM;
@@ -183,6 +187,13 @@ typedef enum {
 	q10 = 10,
 	q9 = 9,
 	q8 = 8,
+	q7 = 7,
+	q6 = 6,
+	q5 = 5,
+	q4 = 4,
+	q3 = 3,
+	q2 = 2,
+	q1 = 1,
 	Qerror = -1
 } q_format_t;
 
@@ -292,6 +303,7 @@ typedef struct{
 	int32_t speed_ref;
 	int32_t speed;
 	int32_t speed_q15;
+	int32_t acc_q15;
 	speed_calc_parameter_t speed_calc_param;
 
 	uint16_t theta;
@@ -318,15 +330,16 @@ typedef struct{
 
 typedef struct {
     int16_t     value;
-    q_format_t q;
+    q_format_t 	q;
 } fixed16_t;
 
 typedef struct {
 	fixed16_t Kp;
 	fixed16_t Ki;
-	dq_32t I_buffer_q20;
+	dq_32t I_buffer;
 	dq_t windup;
 } PID_Controller;
+
 typedef struct {
 	float Rs;
 	float Ls;

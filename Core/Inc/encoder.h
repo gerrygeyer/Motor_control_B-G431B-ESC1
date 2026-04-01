@@ -10,7 +10,8 @@
 
 #include <main.h>
 #include <foc_math.h>
-
+#include <stdint.h>
+#include "parameter.h"
 
 #define INIT_EL_ANGLE 0  // Degree
 #define COUNTERCLOCKWISE -1

@@ -112,5 +112,21 @@ uint32_t sqrt_fast_uint(uint32_t n);
  */
 dq_t circle_limitation_Q15(dq_t Vdq, const uint32_t max_output);
 
+/**
+ * @brief Converts a floating-point value into a 16-bit fixed-point representation with an automatically selected Q-format.
+ *
+ * The function determines a suitable Q-format such that the input value can be represented
+ * within a signed 16-bit integer without overflow while preserving as much precision as possible.
+ * The value is then scaled and stored together with the detected Q-format.
+ *
+ * @param value Floating-point input value.
+ *
+ * @return fixed16_t
+ *         - q: detected Q-format
+ *         - value: scaled fixed-point representation
+ *
+ * @note Returns {Qerror, 0} if no valid representation can be found.
+ */
+fixed16_t get_q_format(float value);
 
 #endif /* INC_FOC_MATH_H_ */

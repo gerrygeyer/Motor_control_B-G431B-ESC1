@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <observer.h>
 
-
+uint32_t observer_time_us = 0;
 
 // function to start, stop the time the motor control need
 
@@ -32,5 +32,6 @@ uint32_t stopp_time_measurement(void){
 	TIM2->CNT = 0;
 
 	Output = (ticks+85)/170; // scale to us, with +85 we pay attention to correct rounding (170/2 = 85)
+	observer_time_us = Output;
 	return (Output);
 }

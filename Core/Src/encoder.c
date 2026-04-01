@@ -14,10 +14,11 @@ extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim4;
 extern uint32_t operation_time_us;
 
+static inline int32_t SG7_Diff_speed_q15(const RingBuf7n16_t *rb, fixed16_t g_q15);
+
 static int16_t iir_lp_speed_q15(int16_t val);
 
-uint16_t encoder_count;// speed_lp_buffer;
-
+// static uint16_t encoder_count;// speed_lp_buffer;
 
 int32_t rotor_position = 0;
 
@@ -88,6 +89,8 @@ int16_t speed_calculation(FOC_HandleTypeDef *pHandle_foc){
 
 	pHandle_foc->speed = (int16_t)speed_filter;
 	pHandle_foc->speed_q15 = ((int32_t)pHandle_foc->speed << 15)/ MAX_SPEED;
+
+
 	return (pHandle_foc->speed); 
 }
 
@@ -122,3 +125,5 @@ static int16_t iir_lp_speed_q15(int16_t val){
 	filter_val = CLAMP_INT32_TO_INT16((filter_val >> 1));
 	return (filter_val);
 }
+
+

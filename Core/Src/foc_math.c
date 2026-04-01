@@ -6,6 +6,7 @@
  */
 #include <math.h>
 #include <foc_math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "parameter.h"
@@ -148,8 +149,6 @@ uint32_t sqrt_fast_uint(uint32_t n) {
 }
 
 
-
-
 dq_t circle_limitation_Q15(dq_t Vdq, const uint32_t max_output){
 	dq_t Output;
 
@@ -181,6 +180,43 @@ dq_t circle_limitation_Q15(dq_t Vdq, const uint32_t max_output){
 
     return (Output);
 }
+
+
+fixed16_t get_q_format(float value){
+	
+	float abs_value = fabs(value);
+	fixed16_t Output;
+	if(abs_value == 0.0f){
+		Output.q = Qerror; 
+		Output.value = 0; 
+		return Output;
+	}
+	if(abs_value >= 1.0f){
+		for(uint8_t i = 0; i <= 15; i++){
+			if((abs_value / (1 << i)) > 0){
+				// do nothing
+			}else{
+				Output.q = (q_format_t)i;
+				Output.value = (int16_t)CLAMP_INT32_TO_INT16(value * ((1 << (15-i))-1));
+				return Output;
+			}
+		}
+	}else{
+		for(uint8_t i = 1; i <= 15; i++){
+			if((abs_value * (1 << i)) > 0){
+				// do nothing
+			}else{
+				Output.q 		= (q_format_t)(i-1);
+				Output.value 	= (int16_t)CLAMP_INT32_TO_INT16(value * ((1 << (15+i-1))-1));
+			}
+		}
+	}
+	Output.q = Qerror;
+	Output.value = 0;
+	return Output;
+}
+
+
 
 
 

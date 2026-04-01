@@ -17,6 +17,7 @@
 #include "communication.h"
 #include "encoder.h"
 #include "motor_param_est.h"
+#include "motor_inertia_est.h"
 #include <stdint.h>
 
 static void highspeed_motor_task(Motor *m);
@@ -46,6 +47,10 @@ void motor_time_management(void)
     static uint16_t middlespeed_task_counter = 2;
     static uint16_t lowspeed_task_counter = 1;
     static uint16_t oneHz_task_counter = 0;
+
+    // stopp_time_measurement();
+    // start_time_measurement();
+
     
     // Highspeed task
     highspeed_motor_task(&g_motor);
@@ -210,8 +215,9 @@ static void lowspeed_motor_task(Motor *m)
      * @see current_measurement.h
      */
     execute_voltage_measurement();
-    // Implement lowspeed task logic here
-    // e.g., position control, etc.
+
+
+    set_inertia_estimation_flag();
 
 }
 

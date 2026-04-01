@@ -37,6 +37,7 @@
 #include <svm.h>
 
 #include "motor_task.h"
+#include "motor_inertia_est.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -272,6 +273,8 @@ int main(void)
       Error_Handler();
   }
   */
+// ########## INIT MOTOR INERTIA ESTIMATION ############
+motor_inertia_estimation_init();
 // ######### INIT MOTOR STATE MACHINE ############
  MotorSM_Init(&g_motor);
 
@@ -285,6 +288,7 @@ int main(void)
   while (1)
   {
     MotorSM_Service(&g_motor);
+    motor_inertia_estimation_time_management();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

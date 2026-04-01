@@ -8,7 +8,126 @@ Die Motorsteuerung ist in mehrere funktionale Module aufgeteilt: **foc.c** imple
 
 ### Übersicht FOC
 
-(Kapitel noch unvollständig).
+#### Park & Clarke Transformation
+
+Die **Field Oriented Control (FOC)** basiert darauf, die dreiphasigen Motorströme in ein geeignetes Koordinatensystem zu transformieren, sodass Fluss- und Drehmomentanteil unabhängig voneinander geregelt werden können. Die Abbildung zeigt beispielhaft den Vektor $f$, der in den drei relevanten Koordinatensystemen $abc$, $\alpha\beta$ und $dq$ dargestellt ist.
+
+![reference_frame_transformation.drawio](./picture_diagrams/reference_frame_transformation.drawio.svg)
+
+
+
+Mithilfe der **Clarke-Transformation** werden die um $120^\circ$ phasenverschobenen Ströme des dreiphasigen Systems in ein zweidimensionales stationäres Koordinatensystem überführt. Dabei erfolgt eine Aufteilung in den Realteil $\alpha$ und den Imaginärteil $\beta$. 
+$$
+\mathbf{f}_{\alpha\, \beta} 
+		= f_\alpha + j f_\beta 
+		\;\;\  \equiv\;\; 
+		\frac{2}{3}\left[ f_a + e^{j\frac{2\pi}{3}} f_b + e^{j\frac{4\pi}{3}} f_c \right] \\
+		\begin{bmatrix}
+			f_{\alpha} \\[4pt]
+			f_{\beta}
+		\end{bmatrix}
+		=
+		\frac{2}{3}
+		\begin{bmatrix}
+			1 & -\tfrac{1}{2} & -\tfrac{1}{2} \\
+			0 & \tfrac{\sqrt{3}}{2} & -\tfrac{\sqrt{3}}{2}
+		\end{bmatrix}
+		\begin{bmatrix}
+			f_a \\[4pt]
+			f_b \\[4pt]
+			f_c
+		\end{bmatrix}
+$$
+Da die Größen im $\alpha\beta$-System weiterhin zeitvariant sind, wird anschließend die **Park-Transformation** angewendet. Hierbei wird das Koordinatensystem um den elektrischen Winkel \theta_e rotiert, sodass es mit dem Raumzeiger f mitrotiert. Dadurch entstehen die Komponenten im rotierenden $dq$-Koordinatensystem.
+$$
+\mathbf{f}_{d\,q} 
+		= \mathbf{f}_{\alpha \, \beta} \cdot e^{-\theta _e}\\
+\begin{bmatrix}
+	f_d \\[4pt]
+	f_q
+\end{bmatrix}
+=
+\begin{bmatrix}
+	\cos\theta_e & \sin\theta_e \\
+	-\sin\theta_e & \cos\theta_e
+\end{bmatrix}
+\begin{bmatrix}
+	f_\alpha \\[4pt]
+	f_\beta
+\end{bmatrix}
+$$
+Die Clarke- und Park-Transformation besitzen jeweils eine inverse Transformation, mit der die berechneten Spannungs- oder Stromgrößen aus dem $dq$-Koordinatensystem wieder in das stationäre $\alpha\beta$-System und anschließend in das dreiphasige abc-System transformiert werden können.
+
+Durch diese Transformation werden die ursprünglich sinusförmigen Größen in nahezu konstante Größen überführt, wodurch eine entkoppelte Regelung von Fluss- (d-Achse) und Drehmomentanteil (q-Achse) ermöglicht wird.
+
+
+
+#### **Inverse Park & Clarke -Transformation**
+
+Die inverse Park-Transformation rotiert den Vektor aus dem rotierenden dq-Koordinatensystem zurück in das stationäre \alpha\beta-Koordinatensystem. Dabei wird um den elektrischen Winkel \theta_e in entgegengesetzter Richtung zur Park-Transformation rotiert:
+
+
+$$
+\begin{bmatrix} f_{\alpha} \\ f_{\beta} \end{bmatrix} = \begin{bmatrix} \cos \theta_e & -\sin \theta_e \\ \sin \theta_e & \cos \theta_e \end{bmatrix} \begin{bmatrix} f_d \\ f_q \end{bmatrix}
+$$
+
+
+
+
+Anschließend werden die Größen aus dem stationären \alpha\beta-Koordinatensystem wieder in das dreiphasige abc-System transformiert:
+
+
+$$
+\begin{bmatrix} f_a \\ f_b \\ f_c \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ -\frac{1}{2} & \frac{\sqrt{3}}{2} \\ -\frac{1}{2} & -\frac{\sqrt{3}}{2} \end{bmatrix} \begin{bmatrix} f_{\alpha} \\ f_{\beta} \end{bmatrix}
+$$
+
+
+![park_clark_currents.drawio](./picture_diagrams/park_clark_currents.svg)
+
+##### Implementierung im Code 
+
+Die Gleichungen werden in der Implementierung mittels effizienter Fixed-Point-Arithmetik (Q15) umgesetzt, wobei Multiplikationen und Skalierungen über Bit-Shift-Operationen realisiert werden.
+
+```c
+static alphabeta_t clark_transformation_q15(ab_t Input){
+	alphabeta_t Output;
+	int32_t x,a,b;
+
+	Output.alpha = Input.a;
+	a = (int32_t)Input.a;
+	b = (int32_t)Input.b;
+
+	x = (b << 1) + a;
+	x = (x >> 2);			// (1) rightshift 15 bits: split in two shifts
+	x *= DIV_1_SQRT3_Q15;
+	x = (x >> 13);		// (2)
+	Output.beta = CLAMP_INT32_TO_INT16(x);
+
+	return (Output);
+}
+```
+
+
+
+```c
+static dq_t park_transformation_q15(alphabeta_t I, angle_t el_theta){
+
+	dq_t Output;
+
+	int32_t x;
+	x		= ((int32_t)el_theta.cos * (int32_t)I.alpha) + ((int32_t)el_theta.sin * (int32_t)I.beta);
+	x		= (x >> 15);
+	Output.d = CLAMP_INT32_TO_INT16(x);
+
+	x		= (-(int32_t)el_theta.sin * (int32_t)I.alpha) + ((int32_t)el_theta.cos * (int32_t)I.beta);
+	x		= (x >> 15);
+	Output.q = CLAMP_INT32_TO_INT16(x);
+
+	return (Output);
+}
+```
+
+
 
 ![image-20241004102954214](./picture_diagrams/FOC_structure.png)
 
@@ -305,7 +424,7 @@ Interne Flags (`start_request_flag`, `stop_request_flag`, `gotostart_finish_flag
 
 
 
-### Parameter Schätzverfahren
+## Parameter Schätzverfahren
 
 Die Parameterschätzung wird durch das setzen von 'btn_parameter_id_edge' gestartet. Dabei werden die Werte für $R$, $L$, $K_e$ und $J$ der Reihe nach ermittelt. Sollte ein Verfahren fehl schlagen wird die Schätzung abgebrochen und muss von neuem gestartet werden.
 
@@ -514,86 +633,78 @@ Nach erfolgreicher Schätzung werden die **PI-Reglerparameter** neu berechnet.
 ### Gegen-EMK-Konstante (Ke) Schätzung über stationären Betrieb
 
 #### Ziel
-Bestimmung der Gegen-EMK-Konstante **Ke** (Back-EMF constant) im laufenden Betrieb bei **konstanter, niedriger Drehzahl**. Die Schätzung dient als Basis für Modellparameter (z. B. Spannungsmodell) und kann später für Beobachter / Reglerauslegung genutzt werden.
+Bestimmung der Gegen-EMK-Konstante **Ke** bei **konstanter, niedriger Drehzahl**. Die Schätzung basiert auf dem stationären Spannungsmodell in der q-Achse und verwendet gemittelte Messwerte, um Ripple und Reglerrauschen zu reduzieren.
 
-#### Messprinzip
-Für eine PMSM im dq-System gilt (vereinfachtes Spannungsmodell):
+#### Messprinzip (stationäre Näherung)
+Für eine PMSM gilt im dq-System (q-Achse):
 
 \[
 v_q = R_s i_q + \omega_e \lambda + L_q \frac{di_q}{dt} + \omega_e L_d i_d
 \]
 
-Für die Messung werden die Bedingungen so gewählt, dass sich das Modell vereinfacht:
+Unter den Messbedingungen
 
-- niedrige, konstante Drehzahl (hier: **500 rpm**)
-- stationärer Betrieb: \(\frac{di_q}{dt} \approx 0\)
-- \(i_d \approx 0\) (bzw. keine gezielte d-Achsen-Stromvorgabe)
+- konstante Drehzahl (stationär)
+- \(\frac{di_q}{dt} \approx 0\)
+- \(i_d \approx 0\)
 
-Dann dominiert:
+vereinfacht sich die Gleichung zu
 
 \[
 v_q \approx R_s i_q + \omega_e \lambda
 \]
 
-Daraus folgt für den Fluss \(\lambda\):
+Mit \(\omega_e = p\cdot \omega_m\) (Polpaarzahl \(p\)) folgt:
 
 \[
 \lambda \approx \frac{v_q - R_s i_q}{\omega_e}
 \]
 
-Die Gegen-EMK-Konstante wird in der Implementierung als:
+In dieser Implementierung wird Ke als Spannungskonstante bezogen auf **Drehzahl in rpm** ermittelt. Dazu wird der Term \((v_q - R_s i_q)\) durch die mechanische Drehzahl geteilt und mit der Polpaarzahl skaliert:
 
 \[
-K_e = \frac{v_q - R_s i_q}{\omega_m}
+K_e \;[\mathrm{V/rpm}] \approx p\cdot \frac{v_q - R_s i_q}{n}
 \]
 
-geschätzt und anschließend auf elektrische Größen umgerechnet (Pole-Pairs):
+wobei \(n\) die Drehzahl in rpm ist.
 
-\[
-\omega_e = p \cdot \omega_m
-\]
+> Hinweis: Die genaue physikalische Interpretation hängt davon ab, wie \(v_q\) im Projekt skaliert ist (z. B. Bezug auf \(V_{dc}\), SVPWM-Skalierung, Phasen-/Leiter-Leiter-Spannung). Für eine konsistente Verwendung muss dieselbe Definition in der gesamten Reglerauslegung genutzt werden.
 
-**Hinweis zur Definition:** Je nach Literatur wird \(K_e\) entweder bezogen auf \(\omega_m\) (mechanisch) oder \(\omega_e\) (elektrisch) definiert. In dieser Implementierung wird die mechanische Drehzahl verwendet und mit dem Polpaarfaktor skaliert.
+#### Implementierungsdetails (`CALCULATION`)
+Im Zustand `CALCULATION` werden die gemittelten Größen rückskaliert und Ke berechnet:
 
-#### Implementierung (`backEMF_measurement_timing`)
-Die Schätzung ist als Zustandssequenz aufgebaut:
-
-1. **MEASUREMENT**
-   
-   - Vorgabe einer konstanten Drehzahl:
-     - `m->speed_ref = 500` (rpm)
-   - Sicherheitscheck:
-     - Abbruch, wenn \(|i_q|\) einen Grenzwert überschreitet (`MAX_ESTIMATION_CURRENT`)
-   - Mittelung über ein definiertes Messfenster (hier: **1 Sekunde**, da `FOC_FREQUENCY` Samples):
-     - \(\overline{v_q}\) aus `pHandle_foc->V_dq_q15.q`
-     - \(\overline{i_q}\) aus `pHandle_foc->I_dq_q15.q`
-     - \(\overline{\omega}\) aus `pHandle_foc->speed_q15`
-   
-2. **CALCULATION**
-   - Rückskalierung der gemittelten Größen:
-     - \(V_q\) in Volt (unter Berücksichtigung von Zwischenkreis/Skalierung)
-     - \(I_q\) in Ampere
-     - \(\omega_m\) in rad/s (aus gemittelter Drehzahl)
-   - Vermeidung numerischer Probleme bei sehr kleinen Drehzahlen:
-     - Abbruch bei \(|\omega_m| < 0.01\,\mathrm{rad/s}\)
-   - Berechnung:
+1. **Rückskalierung**
+   - q-Achsen-Spannung:
      \[
-     K_e = p \cdot \frac{V_q - R_s I_q}{\omega_m}
+     V_q = \frac{\overline{v_{q,\mathrm{q15}}}\cdot \frac{1}{2}V_{dc}}{Q10}
+     \]
+   - q-Achsen-Strom:
+     \[
+     I_q = \frac{\overline{i_{q,\mathrm{q15}}}}{Q10}
+     \]
+   - Drehzahl in rpm:
+     \[
+     n = \frac{\overline{\omega_{\mathrm{q15}}}\cdot n_{\max}}{Q15}
      \]
 
-3. **RESULT**
-   - Ergebnis wird gespeichert:
-     - `result->Ke_vrad = estimation_t.est_Ke`
+2. **Numerische Absicherung**
+   Sehr kleine Drehzahlen werden verworfen, um Division durch (nahezu) Null und damit unrealistisch große Ke-Werte zu vermeiden:
 
-#### Voraussetzungen und Annahmen
-- Der Motor läuft stabil bei der vorgegebenen Drehzahl, Laständerungen sind gering.
-- Der Stromregler ist aktiv, sodass die Größen \(v_q\) und \(i_q\) aussagekräftig gemittelt werden können.
-- \(R_s\) wurde zuvor identifiziert und ist ausreichend genau.
-- Der Einfluss von \(L\)-Anteilen ist durch stationären Betrieb klein (insbesondere \(\frac{di_q}{dt}\approx 0\)).
+\[
+|n| < 0.1 \;\Rightarrow\; \text{Fehler / Abbruch}
+\]
+
+3. **Ke-Berechnung**
+\[
+K_e = p\cdot \frac{V_q - R_s I_q}{n}
+\]
 
 #### Ergebnis
-- `Ke_vrad` beschreibt die Gegen-EMK-Konstante in der im Projekt verwendeten Definition (bezogen auf \(\omega_m\) und mit Polpaarfaktor).
-- Das Ergebnis kann direkt im Spannungsmodell genutzt werden, z. B. zur Bestimmung von \(\lambda\) oder zur Parametrierung von Beobachtern.
+Das Ergebnis wird in der Ergebnisstruktur abgelegt als:
+
+- `result->Ke_vrpm` (Einheit: V/rpm)
+
+und kann anschließend für die Reglerparametrierung bzw. Modellbildung verwendet werden.
 
 
 
@@ -654,6 +765,36 @@ void calc_rotor_position(void){
 ### Circle Limitation
 
 (Unvollständig)
+
+
+
+
+
+### Filter
+
+Im Folgenden eine kurze Übersicht der verwendeten Filter
+
+#### Savitzky-Golay Filter (n=7, p=2)
+
+
+
+Zur robusten Schätzung der Winkelbeschleunigung aus den diskreten Geschwindigkeitsmessungen wird ein Savitzky–Golay-Filter verwendet. Dabei wird über ein symmetrisches Fenster aus N=7 Messpunkten lokal ein Polynom zweiter Ordnung mittels Least-Squares an die Daten angepasst. Die Ableitung des angepassten Polynoms im Zentrum des Fensters liefert anschließend eine geglättete Schätzung der Geschwindigkeitsslope.
+
+Durch die symmetrische Fensterstruktur mit den Stützstellen $n = [-3,-2,-1,0,1,2,3]$ ergibt sich für die Ableitung eine feste FIR-Filterstruktur
+$$
+\frac{d\omega}{dn} = \frac{-3\omega_{-3}-2\omega_{-2}-\omega_{-1} +\omega_{1}+2\omega_{2}+3\omega_{3}}{28}
+$$
+bzw. in der optimierten Differenzform
+$$
+\frac{d\omega}{dn} = \frac{3(\omega_{+3}-\omega_{-3}) + 2(\omega_{+2}-\omega_{-2}) + (\omega_{+1}-\omega_{-1})}{28}.
+$$
+
+
+Die zeitliche Ableitung ergibt sich anschließend über $\dot{\omega} = f_s \frac{d\omega}{dn}.$
+
+Der Filter kombiniert damit Glättung und Differentiation und reduziert das bei einfachen Differenzen stark verstärkte Messrauschen. Mit $N=7$ ergibt sich ein guter Kompromiss zwischen Rauschunterdrückung und Verzögerung; die resultierende Gruppenlaufzeit beträgt drei Abtastschritte.
+
+![Savitzky-Golan_filter.drawio](./picture_diagrams/Savitzky-Golan_filter.drawio.svg)
 
 
 

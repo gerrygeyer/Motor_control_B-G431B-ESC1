@@ -53,7 +53,7 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
 		pHandle_foc->elec_theta_q15.cos = cos_t(pHandle_foc->theta_openloop);
 
 		pHandle_foc->V_dq_q15.q = 0;
-		pHandle_foc->V_dq_q15.d = (Q15 >>4); // 0.125 * Vmax
+		pHandle_foc->V_dq_q15.d = (Q15 >>4); // 0.0625 * Vmax
 		pHandle_foc->V_alph_bet_q15 = inverse_park_transformation_q15(pHandle_foc->V_dq_q15,pHandle_foc->elec_theta_q15);
 		pHandle_foc->V_abc_q15 = inverse_clark_transformation_q15(pHandle_foc->V_alph_bet_q15);
 		debug_PWM_OUT = get_PWM_OUTPUT_Q15(pHandle_foc->V_abc_q15);

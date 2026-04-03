@@ -159,8 +159,7 @@ static void highspeed_motor_task(Motor *m)
             break;
         case ST_PARAMETER_ID:
             execute_current_measurement(&foc_values, MOTOR_RUN);
-            MotorParamEst_Service(m, &foc_values);
-
+            MotorParamEst_Service(m, &ctrl,&foc_values);
             execute_FOC(&foc_values, &ctrl);
             pwm_output = get_PWM_OUTPUT_Q15(foc_values.V_abc_q15);
             TIM1->CCR1 = pwm_output.Sa;

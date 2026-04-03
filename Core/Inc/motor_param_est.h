@@ -7,7 +7,7 @@
 
 void MotorParamEst_Init(Motor* m);
 bool MotorParamEst_IsDone(const Motor* m);
-void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values);
+void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc_values);
 
 /**
  * @brief Zero-intercept linear regression (y = R * x).

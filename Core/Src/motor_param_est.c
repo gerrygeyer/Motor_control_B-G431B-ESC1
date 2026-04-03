@@ -7,6 +7,7 @@
 #include "motor_param_est.h"
 #include "foc_math.h"
 #include "current_measurement.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -15,14 +16,24 @@
 #include "motor_events.h"
 #include "motor_hfi.h"
 #include "control.h"
+#include "motor_inertia_est.h"
 #include <math.h>
 
 
-extern Control_Loops ctrl;
+extern InertiaEstimator_t inertia_est;
 
 static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t* result);
 static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t* result);
 static Status backEMF_measurement_timing(Motor *m, FOC_HandleTypeDef *pHandle_foc, motor_param_result_t *result);
+
+static bool pidm_est_j_active;
+static uint32_t pidm_est_j_counter;
+
+static void pidm_reset_j_estimation(void)
+{
+    pidm_est_j_active = false;
+    pidm_est_j_counter = 0u;
+}
 
 param_estimation_t estimation_t;
 
@@ -36,6 +47,7 @@ param_estimation_t estimation_t;
 {
     m->pidm_state = PIDM_IDLE;
     m->pidm_result.valid = false;
+    pidm_reset_j_estimation();
 }
 /* Info: this function are triggert by sm machine in while loop*/
 void MotorParamEst_Init(Motor* m)
@@ -106,7 +118,7 @@ bool MotorParamEst_IsDone(const Motor* m)
     return (m->pidm_state == PIDM_DONE) && (m->pidm_result.valid == true);
 }
 
-void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
+void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc_values)
 {
     if (m == NULL) return;
 
@@ -129,10 +141,9 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
     {
         case PIDM_IDLE:
             // /* Wait for explicit start */
-            // if (m->pidm_start_request_flag) {
-            //     m->pidm_start_request_flag = false;
-            //     m->pidm_state = PIDM_START;
-            // }
+            
+            m->pidm_start_request_flag = true; // at the moment, we start directly 
+
             if(m->pidm_start_request_flag){
                 m->pidm_start_request_flag = false;
                 m->pidm_state = PIDM_START;
@@ -163,16 +174,26 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
             if(induction_measurement_timing(foc_values, &m->pidm_result) == PROCESS_SUCCESS) {
             foc_values->V_abc_q15 = (abc_16t){0,0,0};
             m->pidm_state = PIDM_EST_Ke;
+
+            // update control parameters with the new estimated values
+            ctrl->motor_params.Ls = m->pidm_result.Ls_h;
+            ctrl->motor_params.Rs = m->pidm_result.Rs_ohm;
+            ctrl->alpha = (int16_t)(0.5f * (float)Q15);
+            ctrl->motor_params.bandwidth_speed = 20.0f;
+            ctrl->motor_params.cutoff_freq_div = 10.0f;
+            calculate_PI_parameter(ctrl);
+
             }
             break;
 
         case PIDM_EST_Ke:
             /* Estimate back-EMF constant Ke */
             foc_values->foc_mode = FOC_CLOSELOOP;
+
             Status backEMF_status = backEMF_measurement_timing(m,foc_values, &m->pidm_result);
             if(backEMF_status == PROCESS_SUCCESS) {
                 foc_values->V_abc_q15 = (abc_16t){0,0,0};
-                m->pidm_state = PIDM_EST_J;
+                m->pidm_state = PIDM_DONE;
             }
             if(backEMF_status == PROCESS_ERROR) {
                 foc_values->V_abc_q15 = (abc_16t){0,0,0};
@@ -182,10 +203,55 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
 
         case PIDM_EST_J:
             /* Estimate inertia J */
-            /* TODO: perform controlled acceleration / use torque estimate vs. alpha */
-            /* m->pidm_result.J_kgm2 = ...; */
-            m->pidm_result.valid = true;
-            m->pidm_state = PIDM_DONE;
+            foc_values->foc_mode = FOC_CLOSELOOP;
+
+            if (!pidm_est_j_active) {
+                pidm_est_j_active = true;
+                pidm_est_j_counter = 0u;
+                InertiaEstimator_Reset(&inertia_est, 1000.0f);
+                InertiaEstimator_Enable(&inertia_est, true);
+            }
+
+            if (abs(foc_values->I_dq_q15.q) > MAX_ESTIMATION_CURRENT) {
+                m->speed_ref = 0;
+                pidm_reset_j_estimation();
+                m->pidm_state = PIDM_ERROR;
+                break;
+            }
+
+            {
+                const uint32_t ramp_ticks = FOC_FREQUENCY;
+                const uint32_t timeout_ticks = 8u * FOC_FREQUENCY;
+                const int16_t speed_min_rpm = 250;
+                const int16_t speed_max_rpm = 1250;
+                const int32_t speed_span_rpm = (int32_t)speed_max_rpm - (int32_t)speed_min_rpm;
+                uint32_t ramp_pos = pidm_est_j_counter % (2u * ramp_ticks);
+
+                if (ramp_pos < ramp_ticks) {
+                    m->speed_ref = (int16_t)(speed_min_rpm + (int16_t)((speed_span_rpm * (int32_t)ramp_pos) / (int32_t)ramp_ticks));
+                } else {
+                    ramp_pos -= ramp_ticks;
+                    m->speed_ref = (int16_t)(speed_max_rpm - (int16_t)((speed_span_rpm * (int32_t)ramp_pos) / (int32_t)ramp_ticks));
+                }
+
+                if (InertiaEstimator_IsValid(&inertia_est) && (inertia_est.update_count >= 32u)) {
+                    m->pidm_result.J_kgm2 = InertiaEstimator_GetJ(&inertia_est);
+                    m->speed_ref = 0;
+                    pidm_reset_j_estimation();
+                    m->pidm_result.valid = true;
+                    m->pidm_state = PIDM_DONE;
+                    break;
+                }
+
+                pidm_est_j_counter++;
+                if (pidm_est_j_counter >= timeout_ticks) {
+                    m->speed_ref = 0;
+                    pidm_reset_j_estimation();
+                    m->pidm_state = PIDM_ERROR;
+                    break;
+                }
+            }
+
             break;
 
         case PIDM_DONE:
@@ -206,7 +272,6 @@ void MotorParamEst_Service(Motor* m, FOC_HandleTypeDef *foc_values)
 float debug_voltage1, debug_voltage2, debug_voltage3, debug_voltage4, debug_voltage5, debug_voltage6;
 
 static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result){
-
 
     switch (estimation_t.Rs) {
         case MEASUREMENT: {
@@ -530,12 +595,6 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
 
         break;
         case RESULT:
-        ctrl.motor_params.Ls = estimation_t.est_Ls;
-        ctrl.motor_params.Rs = estimation_t.est_Rs;
-        ctrl.alpha = (int16_t)(0.2f * (float)Q15);
-        ctrl.motor_params.bandwidth_speed = 20.0f;
-        ctrl.motor_params.cutoff_freq_div = 10.0f;
-        calculate_PI_parameter(&ctrl);
 
         result->Ls_h = estimation_t.est_Ls;
 
@@ -549,8 +608,9 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
     return PROCESS_UNSUCCESS;
 }
 
-
-
+float debug_ke_Iq = 0;
+float debug_ke_Vq = 0;
+float debug_ke_speed = 0;
 
 static Status backEMF_measurement_timing(Motor *m, FOC_HandleTypeDef *pHandle_foc, motor_param_result_t *result) {
 
@@ -558,16 +618,16 @@ static Status backEMF_measurement_timing(Motor *m, FOC_HandleTypeDef *pHandle_fo
         case MEASUREMENT: {
             uint16_t step = estimation_t.counter_Ke / estimation_t.time_div_Ke;
 
-            m->speed_ref = 500;
+            m->speed_ref = 500; 
 
-            if (abs(pHandle_foc->I_ref_q15.q) > MAX_ESTIMATION_CURRENT) {
+            if (abs(pHandle_foc->I_ref_q15.q) > Q14) { // need to run without load, so this case should not happen, if it does, we abort the estimation to avoid damage to the motor
+                m->speed_ref = 0;
                 return PROCESS_ERROR;
             }
 
             switch (step) {
                 case 0:
                 case 1:
-                case 2:
                     break;
                 default:
                     if (estimation_t.counter_Ke_measurement < FOC_FREQUENCY) {
@@ -583,13 +643,13 @@ static Status backEMF_measurement_timing(Motor *m, FOC_HandleTypeDef *pHandle_fo
                     }
                     break;
             }
-        
+            estimation_t.counter_Ke++;
         }
         break;
         case CALCULATION: {
-            float Vq = ((float)estimation_t.med_Vq15 * (float)pHandle_foc->source_voltage) / (float)Q11; // convert back to real voltage in V (Vq is in Q10, and we need to divide by 2 to get the real voltage (Vdc/2)) 
-            float Iq = ((float)estimation_t.med_Iq15) / (float)Q10; // convert back to real current in A
-            float speed_rpm = ((float)estimation_t.med_speed_q15) * (float)MAX_SPEED / (float)Q15;
+            float Vq = debug_ke_Vq = ((float)estimation_t.med_Vq15 * (float)pHandle_foc->source_voltage) / (float)Q26; // convert back to real voltage in V (Vq is in Q10, and we need to divide by 2 to get the real voltage (Vdc/2) -> Q11 ;  than, divide by Q15 to get the real voltage in V) 
+            float Iq = debug_ke_Iq = ((float)estimation_t.med_Iq15) / (float)Q10; // convert back to real current in A
+            float speed_rpm = debug_ke_speed = ((float)estimation_t.med_speed_q15) * (float)MAX_SPEED / (float)Q15;
             if(fabs(speed_rpm) < 0.1f) { // avoid division by zero and very low speeds which can lead to very high Ke estimates due to noise
                 return PROCESS_ERROR;
             }

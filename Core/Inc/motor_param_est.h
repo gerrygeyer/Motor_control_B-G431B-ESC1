@@ -43,6 +43,6 @@ float lin_reg(const int32_t *x, const int32_t *y, uint32_t n);
 #define KE_ESTIMATION_TIME_PER_STEP (FOC_FREQUENCY*2) // 2 seconds per step
 
 #define MAX_ESTIMATION_CURRENT      (2 << 10)       // 2A in Q10 format, for current injection during estimation    
-
+#define J_ESTIMATION_UPDATE_COUNT   (1000u)         // number of iteratrions before we consider the inertia estimation to be valid
 
 #endif /* MOTOR_PARAM_EST_H */

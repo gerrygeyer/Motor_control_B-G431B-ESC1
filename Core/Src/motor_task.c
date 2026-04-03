@@ -215,7 +215,6 @@ static void lowspeed_motor_task(Motor *m)
      */
     execute_voltage_measurement();
 
-
     set_inertia_estimation_flag();
 
 }

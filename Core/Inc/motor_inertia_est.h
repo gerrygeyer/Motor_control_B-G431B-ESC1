@@ -104,6 +104,13 @@ void InertiaEstimator_Update(InertiaEstimator_t *est,
  * @return Estimated J [kg m^2], or negative value if invalid
  */
 float InertiaEstimator_GetJ(const InertiaEstimator_t *est);
+/**
+ * @brief Return estimated viscous friction B.
+ *
+ * @param est        Pointer to estimator object
+ * @return Estimated B [Nms/rad], or negative value if invalid
+ */
+float InertiaEstimator_GetB(const InertiaEstimator_t *est);
 
 /**
  * @brief Return whether the current estimate is valid.

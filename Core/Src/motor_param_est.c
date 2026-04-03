@@ -98,8 +98,6 @@ void MotorParamEst_Init(Motor* m)
     estimation_t.hfi_voltage_q15 = (int16_t)(max_hfi_injection_voltage * (float)Q15); // 0.1 * Vmax
 
 
-
-
     estimation_t.counter_Ke = 0;
     estimation_t.time_div_Ke = KE_ESTIMATION_TIME_PER_STEP;
     estimation_t.Ke = MEASUREMENT;
@@ -191,13 +189,14 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
             foc_values->foc_mode = FOC_CLOSELOOP;
 
             Status backEMF_status = backEMF_measurement_timing(m,foc_values, &m->pidm_result);
-            if(backEMF_status == PROCESS_SUCCESS) {
-                foc_values->V_abc_q15 = (abc_16t){0,0,0};
-                m->pidm_state = PIDM_DONE;
-            }
+
             if(backEMF_status == PROCESS_ERROR) {
                 foc_values->V_abc_q15 = (abc_16t){0,0,0};
                 m->pidm_state = PIDM_ERROR;
+            }
+            if(backEMF_status == PROCESS_SUCCESS) {
+                foc_values->V_abc_q15 = (abc_16t){0,0,0};
+                m->pidm_state = PIDM_EST_J;
             }
             break;
 
@@ -209,6 +208,12 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
                 pidm_est_j_active = true;
                 pidm_est_j_counter = 0u;
                 InertiaEstimator_Reset(&inertia_est, 1000.0f);
+                InertiaEstimator_Init(&inertia_est,
+                        0.995f,
+                        1000.0f,
+                        ((3.0f/2.0f)*((float)m->pidm_result.Ke_vrpm * 60.0f / PI_MULTIPLY_2)),
+                        1e-6f,
+                        1e-1f);
                 InertiaEstimator_Enable(&inertia_est, true);
             }
 
@@ -221,9 +226,9 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
 
             {
                 const uint32_t ramp_ticks = FOC_FREQUENCY;
-                const uint32_t timeout_ticks = 8u * FOC_FREQUENCY;
-                const int16_t speed_min_rpm = 250;
-                const int16_t speed_max_rpm = 1250;
+                const uint32_t timeout_ticks = 15u * FOC_FREQUENCY;
+                const int16_t speed_min_rpm = 400;
+                const int16_t speed_max_rpm = 1000;
                 const int32_t speed_span_rpm = (int32_t)speed_max_rpm - (int32_t)speed_min_rpm;
                 uint32_t ramp_pos = pidm_est_j_counter % (2u * ramp_ticks);
 
@@ -234,8 +239,9 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
                     m->speed_ref = (int16_t)(speed_max_rpm - (int16_t)((speed_span_rpm * (int32_t)ramp_pos) / (int32_t)ramp_ticks));
                 }
 
-                if (InertiaEstimator_IsValid(&inertia_est) && (inertia_est.update_count >= 32u)) {
+                if (InertiaEstimator_IsValid(&inertia_est) && (inertia_est.update_count >= J_ESTIMATION_UPDATE_COUNT)) {
                     m->pidm_result.J_kgm2 = InertiaEstimator_GetJ(&inertia_est);
+                    m->pidm_result.B_nmsrad = InertiaEstimator_GetB(&inertia_est);
                     m->speed_ref = 0;
                     pidm_reset_j_estimation();
                     m->pidm_result.valid = true;
@@ -255,6 +261,12 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
             break;
 
         case PIDM_DONE:
+            ctrl->motor_params.J = m->pidm_result.J_kgm2;
+            ctrl->motor_params.B = m->pidm_result.B_nmsrad;
+            ctrl->alpha = (int16_t)(PI_IP_ALPHA * (float)Q15);
+            ctrl->motor_params.bandwidth_speed = BANDWIDTH_SPEED;
+            ctrl->motor_params.cutoff_freq_div = CUTOFFF_FREQU_DIV;
+            calculate_PI_parameter(ctrl);
             btn_stop_edge = true;           
             /* Hold results until user leaves ST_PARAMETER_ID or starts again */
             break;
@@ -269,7 +281,7 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
 }
 
 
-float debug_voltage1, debug_voltage2, debug_voltage3, debug_voltage4, debug_voltage5, debug_voltage6;
+
 
 static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result){
 
@@ -349,12 +361,6 @@ static Status resistor_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_
                 // Output Voltage are depending on the source voltage, to get the real voltage we have to multiply the measured voltage with the source voltage and divide by Q15 (because the voltage is in Q15)
                 estimation_t.med_voltage_Rs[i] = (estimation_t.med_voltage_Rs[i] * pHandle_foc->source_voltage) >> 15; // now the voltage are scaled into (V / 32) * Q15.
 
-                debug_voltage1 = (float)estimation_t.med_voltage_Rs[0] * 32.0f / (float)Q15; // for debugging: convert back to real voltage in V
-                debug_voltage2 = (float)estimation_t.med_voltage_Rs[1] * 32.0f / (float)Q15;
-                debug_voltage3 = (float)estimation_t.med_voltage_Rs[2] * 32.0f / (float)Q15;
-                debug_voltage4 = (float)estimation_t.med_voltage_Rs[3] * 32.0f / (float)Q15;
-                debug_voltage5 = (float)estimation_t.med_voltage_Rs[4] * 32.0f / (float)Q15;
-                debug_voltage6 = (float)estimation_t.med_voltage_Rs[5] * 32.0f / (float)Q15;
             }
             break;
         }  
@@ -414,8 +420,6 @@ float lin_reg(const int32_t *x, const int32_t *y, uint32_t n)
 }
 
 int32_t mag;
-float debug_induction1, debug_induction2, debug_induction3;
-int16_t V_div_debug1, V_div_debug2, V_div_debug3;
 static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor_param_result_t*result){
 
     uint16_t hfi_injection_freq[3];
@@ -569,13 +573,13 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
             }
         }
 
-        V_div_debug1 = estimation_t.med_current_Ls[0];
-        V_div_debug2 = estimation_t.med_current_Ls[1];
-        V_div_debug3 = estimation_t.med_current_Ls[2];
+        estimation_t.med_current_Ls[0];
+        estimation_t.med_current_Ls[1];
+        estimation_t.med_current_Ls[2];
 
-        debug_induction1 = (float)La[0]; // for debugging: convert back to microhenry
-        debug_induction2 = (float)La[1]; // for debugging: convert back to microhenry
-        debug_induction3 = (float)La[2]; // for debugging: convert back to microhenry
+        // debug_induction1 = (float)La[0]; // for debugging: convert back to microhenry
+        // debug_induction2 = (float)La[1]; // for debugging: convert back to microhenry
+        // debug_induction3 = (float)La[2]; // for debugging: convert back to microhenry
 
         uint8_t valid_measurements = 3;
         for(uint8_t i = 0; i < 3; i++){
@@ -607,10 +611,6 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
 
     return PROCESS_UNSUCCESS;
 }
-
-float debug_ke_Iq = 0;
-float debug_ke_Vq = 0;
-float debug_ke_speed = 0;
 
 static Status backEMF_measurement_timing(Motor *m, FOC_HandleTypeDef *pHandle_foc, motor_param_result_t *result) {
 
@@ -647,9 +647,9 @@ static Status backEMF_measurement_timing(Motor *m, FOC_HandleTypeDef *pHandle_fo
         }
         break;
         case CALCULATION: {
-            float Vq = debug_ke_Vq = ((float)estimation_t.med_Vq15 * (float)pHandle_foc->source_voltage) / (float)Q26; // convert back to real voltage in V (Vq is in Q10, and we need to divide by 2 to get the real voltage (Vdc/2) -> Q11 ;  than, divide by Q15 to get the real voltage in V) 
-            float Iq = debug_ke_Iq = ((float)estimation_t.med_Iq15) / (float)Q10; // convert back to real current in A
-            float speed_rpm = debug_ke_speed = ((float)estimation_t.med_speed_q15) * (float)MAX_SPEED / (float)Q15;
+            float Vq = ((float)estimation_t.med_Vq15 * (float)pHandle_foc->source_voltage) / (float)Q26; // convert back to real voltage in V (Vq is in Q10, and we need to divide by 2 to get the real voltage (Vdc/2) -> Q11 ;  than, divide by Q15 to get the real voltage in V) 
+            float Iq = ((float)estimation_t.med_Iq15) / (float)Q10; // convert back to real current in A
+            float speed_rpm = ((float)estimation_t.med_speed_q15) * (float)MAX_SPEED / (float)Q15;
             if(fabs(speed_rpm) < 0.1f) { // avoid division by zero and very low speeds which can lead to very high Ke estimates due to noise
                 return PROCESS_ERROR;
             }

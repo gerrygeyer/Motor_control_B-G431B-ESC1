@@ -39,13 +39,12 @@
 #define PMSM_J_M_R		0.0000064952	// Parameter estimate
 #define PMSM_SYSTEM_J	0.000057633
 #define PMSM_J			PMSM_SYSTEM_J
-#define PMSM_KT 		((3.0f/2.0f)*((float)PMSM_POLEPAIR * PMSM_LAMBDA))	// Nm/A
 #define PMSM_DIV_KT 	738
 // #define PMSM_POLEPAIR 	7
 #define PMSM_POLEPAIR 	6	// TEST
 #define PMSM_LAMBDA		0.000129f
 #define PMSM_KE			((float)PMSM_POLEPAIR*PMSM_LAMBDA) 	//Vrms/RPM
-#define PMSM_Kt			((3.0f/2.0f)*(float)PMSM_POLEPAIR*PMSM_LAMBDA) 	//Vrms/RPM
+#define PMSM_KT 		((3.0f/2.0f)*((float)PMSM_KE * 60.0f / PI_MULTIPLY_2))	// Nm/A
 #define PMSM_B			0.078985970113088f
 
 // Other

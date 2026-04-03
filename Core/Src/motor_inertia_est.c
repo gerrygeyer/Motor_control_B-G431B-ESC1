@@ -17,6 +17,9 @@ static inline int32_t RB_GetK(const RingBuf7n16_t *rb, uint8_t k);
 void set_inertia_estimation_flag(void){
     inertia_est.start_flag = true;
 }
+float debug_acc_rad = 0.0f; 
+float debug_J_error = 0.0f;
+float debug_J_hat = 0.0f;
 
 void motor_inertia_estimation_time_management(void){
     if(!inertia_est.start_flag){
@@ -38,20 +41,15 @@ void motor_inertia_estimation_time_management(void){
 
     iq_A = (float)iq_q15 / (float)Q10; // max current = 32 A [Q10]
     omega_rad_s = ((float)omega_q15 / (float)Q15) * MAX_SPEED * RPM_TO_RAD_S; // convert back to rad/s
-    alpha_rad_s2 = ((float)acc_q15 / (float)Q15) * MAX_SPEED * RPM_TO_RAD_S; // convert back to rad/s^2
+    alpha_rad_s2 = debug_acc_rad = ((float)acc_q15 / (float)Q15) * MAX_SPEED * RPM_TO_RAD_S; // convert back to rad/s^2
 
     InertiaEstimator_Update(&inertia_est, iq_A, omega_rad_s, alpha_rad_s2);
 
     if (InertiaEstimator_IsValid(&inertia_est))
     {
         inertia_est.j_hat = InertiaEstimator_GetJ(&inertia_est);
+        inertia_est.b_hat = InertiaEstimator_GetB(&inertia_est);
 
-        /* Debug / Logging */
-        // debug.j_hat = j_hat;
-        // debug.theta1 = inertia_est.theta[0];
-        // debug.theta2 = inertia_est.theta[1];
-        // debug.theta3 = inertia_est.theta[2];
-        // debug.rls_error = inertia_est.last_error;
     }
 
 
@@ -61,7 +59,7 @@ void motor_inertia_estimation_init(void){
     RB_Init(&speed_buffer);
     RB_Init(&iq_buffer);
 
-	float ds_dt_f = (float)M_FREQUENCY / ((float)MAX_SPEED * RPM_TO_RAD_S); // (1/w_max)*(1/dt)
+	float ds_dt_f = (float)L_FREQUENCY / ((float)MAX_SPEED * RPM_TO_RAD_S); // (1/w_max)*(1/dt)
 	ds_dt_q15 = get_q_format(ds_dt_f);
  /* Beispielwerte:
        lambda = 0.995
@@ -72,12 +70,12 @@ void motor_inertia_estimation_init(void){
     InertiaEstimator_Init(&inertia_est,
                           0.995f,
                           1000.0f,
-                          0.035f,
+                          PMSM_KT,
                           1e-6f,
                           1e-2f);
 
-    inertia_est.iq_min = 0.2f;      // minimal current for valid estimation
-    inertia_est.alpha_min = 5.0f;   // minimal acceleration for valid estimation
+    inertia_est.iq_min = 0.1f;      // minimal current for valid estimation
+    inertia_est.alpha_min = 1.0f;   // minimal acceleration for valid estimation
     inertia_est.start_flag = false;
 }
 
@@ -124,7 +122,7 @@ static void update_derived_parameters(InertiaEstimator_t *est)
         return;
     }
 
-    est->j_hat = est->kt / theta1;
+    est->j_hat = debug_J_hat = est->kt / theta1;
 
     if ((est->j_hat < est->j_min) || (est->j_hat > est->j_max) || !isfinite(est->j_hat))
     {
@@ -176,8 +174,8 @@ void InertiaEstimator_Init(InertiaEstimator_t *est,
     est->j_min = j_min;
     est->j_max = j_max;
 
-    est->iq_min = 0.05f;
-    est->alpha_min = 1.0f;
+    // est->iq_min = 0.05f;
+    // est->alpha_min = 1.0f;
 
     est->last_error = 0.0f;
     est->last_y_hat = 0.0f;
@@ -226,6 +224,7 @@ void InertiaEstimator_Enable(InertiaEstimator_t *est, bool enable)
     est->enabled = enable;
 }
 
+
 void InertiaEstimator_Update(InertiaEstimator_t *est,
                              float iq,
                              float omega,
@@ -269,7 +268,7 @@ void InertiaEstimator_Update(InertiaEstimator_t *est,
           + phi[1] * est->theta[1]
           + phi[2] * est->theta[2];
 
-    error = alpha - y_hat;
+    error = debug_J_error = alpha - y_hat;
 
     v[0] = est->P[0][0] * phi[0] + est->P[0][1] * phi[1] + est->P[0][2] * phi[2];
     v[1] = est->P[1][0] * phi[0] + est->P[1][1] * phi[1] + est->P[1][2] * phi[2];
@@ -326,6 +325,16 @@ float InertiaEstimator_GetJ(const InertiaEstimator_t *est)
     return est->j_hat;
 }
 
+float InertiaEstimator_GetB(const InertiaEstimator_t *est)
+{
+    if ((est == NULL) || (!est->valid))
+    {
+        return -1.0f;
+    }
+
+    return est->b_hat;
+}
+
 bool InertiaEstimator_IsValid(const InertiaEstimator_t *est)
 {
     if (est == NULL)
@@ -335,6 +344,7 @@ bool InertiaEstimator_IsValid(const InertiaEstimator_t *est)
 
     return est->valid;
 }
+
 
 
 
@@ -368,6 +378,8 @@ static inline int32_t RB_GetK(const RingBuf7n16_t *rb, uint8_t k)
     return rb->buf[(uint8_t)idx];
 }
 
+float debug_diff_speed_S = 0.0f;
+float debug_diff_speed_tmp = 0.0f;
 // k=0 newest, ... k=6 oldest
 static inline int32_t SG7_Diff_speed_q15(const RingBuf7n16_t *rb, fixed16_t g_q15)
 {
@@ -399,8 +411,10 @@ static inline int32_t SG7_Diff_speed_q15(const RingBuf7n16_t *rb, fixed16_t g_q1
     S += ((int32_t)d2 << 1);              // 2*d2
     S += (int32_t)d1;                     // 1*d1
 
+    debug_diff_speed_S = (float)S;
     // ds/dt in Q15: (S_q15 * g_q15)>>15
     int32_t tmp = S * (int32_t)g_q15.value;     // Q15*Q15 = Q30
+    debug_diff_speed_tmp = (float)tmp;
     int32_t dsdt_q15 = (int32_t)(tmp >> g_q15.q);
 
     return dsdt_q15; // normierte Ableitung (1/s), gehört zeitlich zu k-3

@@ -45,6 +45,7 @@ typedef struct {
     float Ls_h;
     float Ke_vrpm;
     float J_kgm2;
+    float B_nmsrad;
     bool  valid;
 } motor_param_result_t;
 

@@ -193,21 +193,27 @@ fixed16_t get_q_format(float value){
 	}
 	if(abs_value >= 1.0f){
 		for(uint8_t i = 0; i <= 15; i++){
-			if((abs_value / (1 << i)) > 0){
+			float scaled_value = abs_value / (1 << i);
+			if(scaled_value < 1.0f){
 				// do nothing
 			}else{
-				Output.q = (q_format_t)i;
-				Output.value = (int16_t)CLAMP_INT32_TO_INT16(value * ((1 << (15-i))-1));
+				uint8_t q_format = 15 - i;
+				Output.q 		= (q_format_t)(q_format);
+				Output.value = (int16_t)CLAMP_INT32_TO_INT16(value * ((1 << (q_format))-1));
 				return Output;
 			}
 		}
 	}else{
 		for(uint8_t i = 1; i <= 15; i++){
-			if((abs_value * (1 << i)) > 0){
+			float scaled_value = abs_value * (1 << i);
+			// if((abs_value * (1 << i)) < 1.0f){
+			if(scaled_value < 1.0f){
 				// do nothing
 			}else{
-				Output.q 		= (q_format_t)(i-1);
-				Output.value 	= (int16_t)CLAMP_INT32_TO_INT16(value * ((1 << (15+i-1))-1));
+				uint8_t q_format = 15 + i - 1;
+				Output.q 		= (q_format_t)(q_format);
+				Output.value 	= (int16_t)CLAMP_INT32_TO_INT16(value * ((1 << (q_format))-1));
+				return Output;
 			}
 		}
 	}

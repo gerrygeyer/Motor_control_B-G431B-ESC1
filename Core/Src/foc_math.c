@@ -125,6 +125,7 @@ int16_t cos_t(int16_t y){
 
 
 
+
 /*
  * create a int16_t value from float. to calculate, use Bitshift >>= 15 after calculation.
  */

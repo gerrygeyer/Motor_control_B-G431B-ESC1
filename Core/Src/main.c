@@ -288,6 +288,7 @@ motor_inertia_estimation_init();
   while (1)
   {
     MotorSM_Service(&g_motor);
+    out_source_time_management();
     motor_inertia_estimation_time_management();
     /* USER CODE END WHILE */
 

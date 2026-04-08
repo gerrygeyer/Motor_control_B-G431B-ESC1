@@ -245,6 +245,10 @@ typedef struct {
 	int16_t beta;
 }alphabeta_t;
 
+typedef struct {
+	int32_t alpha;
+	int32_t beta;
+}alphabeta32_t;
 
 
 typedef struct {
@@ -310,7 +314,7 @@ typedef struct{
 	angle_t elec_theta_q15;
 	FOC_Mode foc_mode;
 
-	int16_t source_voltage;			/* Measuring Source Voltage */
+	int16_t source_voltage;			/* Measuring Source Voltage in Q10 format */
 	int16_t temperature;			/* Measuring Temperature */
 
 	dq_t I_ref_q15;
@@ -358,8 +362,8 @@ typedef struct {
     PID_Controller current;
     PID_Controller speed;
 	int16_t alpha;
-	uint8_t new_parameter_flag;
 	int16_t modulation_index_q15;
+	uint8_t new_parameter_flag;
 } Control_Loops;
 
 
@@ -393,6 +397,18 @@ typedef struct{
 
 } param_estimation_t;
 
+
+typedef struct{
+
+	alphabeta32_t I_dot_est;
+	alphabeta32_t I_est;
+	alphabeta32_t kH;
+	fixed16_t Rs;
+	fixed16_t delta_t;
+	int16_t alpha_gain;
+	int16_t k_gain;
+
+}sliding_mode_t;
 
 typedef struct{
 	float y;

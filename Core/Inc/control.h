@@ -15,7 +15,7 @@ void calculate_PI_parameter(Control_Loops *ctrl);
 
 void reset_pi_integrator(Control_Loops *ctrl);
 
-void update_PI_parameter(Control_Loops *ctrl);
+void update_PI_parameter(Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_foc);
 
 /**
  * @brief       Q15 PI current controller for d- and q-axis.

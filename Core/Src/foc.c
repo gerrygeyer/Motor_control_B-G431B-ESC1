@@ -43,7 +43,7 @@ void clear_foc(FOC_HandleTypeDef *pHandle, Control_Loops *ctrl){ // need this fo
 void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
 
 	// for change the parameter online
-	update_PI_parameter(ctrl);
+	update_PI_parameter(ctrl, pHandle_foc);
 
 	switch (pHandle_foc->foc_mode){
 	case FOC_OPENLOOP: // generates openloop voltage vector without control

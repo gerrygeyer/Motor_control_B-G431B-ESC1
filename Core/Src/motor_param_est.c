@@ -176,9 +176,9 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
             // update control parameters with the new estimated values
             ctrl->motor_params.Ls = m->pidm_result.Ls_h;
             ctrl->motor_params.Rs = m->pidm_result.Rs_ohm;
-            ctrl->alpha = (int16_t)(0.5f * (float)Q15);
-            ctrl->motor_params.bandwidth_speed = 20.0f;
-            ctrl->motor_params.cutoff_freq_div = 10.0f;
+            ctrl->alpha = (int16_t)(PI_IP_ALPHA * (float)Q15);
+            ctrl->motor_params.bandwidth_speed = ESTIMATION_BANDWIDTH_SPEED;
+            ctrl->motor_params.cutoff_freq_div = ESTIMATION_CUTOFF_FREQ_DIV;
             calculate_PI_parameter(ctrl);
 
             }
@@ -196,6 +196,7 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
             }
             if(backEMF_status == PROCESS_SUCCESS) {
                 foc_values->V_abc_q15 = (abc_16t){0,0,0};
+                ctrl->motor_params.Ke = m->pidm_result.Ke_vrpm;
                 m->pidm_state = PIDM_EST_J;
             }
             break;
@@ -590,7 +591,6 @@ static Status induction_measurement_timing(FOC_HandleTypeDef *pHandle_foc, motor
         }
         if(valid_measurements > 0){
             estimation_t.est_Ls = (La[0] + La[1] + La[2]) / (float)valid_measurements;
-            result->Ls_h = estimation_t.est_Ls;
         }else{
             estimation_t.est_Ls = 0; // if all measurements are invalid, we set the inductance to zero
             return PROCESS_UNSUCCESS;

@@ -1,5 +1,25 @@
 # Field-Oriented Control (FOC) mit STM32 B-G431B-ESC1 
 
+**Author:** Gerry Geyer  
+**Project:** STM32 PMSM FOC Controller  
+**Last updated:** 06-04-2026
+
+
+
+
+
+## Theoretische Grundlagen
+
+Im Folgenden arbeiten wir hier mit einem Oberflächenmontierten Permanentmagnet Motor (Surface Mounted Permanent Magnet Motor (PMSM)), welcher in der Baufaum des Innenläufers mit drei Wicklungen $a\, b\, c$ hier zu sehen ist.
+
+![PMSM_Structure](.\picture_diagrams\PMSM.svg)
+
+Dabei ist zu sehen der Vektor der den Magnetfluss der Permanentmagneten 
+
+
+
+
+
 ## Übersicht der Quellcode-Module
 
 Die Motorsteuerung ist in mehrere funktionale Module aufgeteilt: **foc.c** implementiert die feldorientierte Regelung mit Clarke- und Park-Transformationen, **control.c** enthält die kaskadierten PI-Regler für Strom und Geschwindigkeit (nach technischem und symmetrischem Optimum), **motor_sm.c** verwaltet die tabellengetriebene Zustandsmaschine für die verschiedenen Betriebszustände, und **motor_task.c** koordiniert die zeitkritischen Regelschleifen auf verschiedenen Prioritätsebenen. **svm.c** erzeugt die PWM-Signale mittels Space-Vector-Modulation, **current_measurement.c** erfasst und verarbeitet die Phasenströme über ADC/DMA, **encoder.c** liefert Positions- und Geschwindigkeitsinformationen, **observer.c** ermöglicht Zeitmessungen der Regelung. **motor_safety.c** implementiert Sicherheitsfunktionen wie automatisches Abschalten bei Verbindungsverlust, **motor_param_est.c** führt die automatische Motorparameteridentifikation durch, **communication.c** steuert die UART-Kommunikation für Datenübertragung und Befehle, und **overcurrent_overvoltage_protection.c** überwacht kritische Grenzwerte. Die Hilfsmodule **motor_ctrl.c**, **motor_events.c**, **motor_types.c** und **foc_math.c** stellen gemeinsame Datenstrukturen, Eventhandling und optimierte Festkomma-Mathematikfunktionen bereit.
@@ -130,6 +150,26 @@ static dq_t park_transformation_q15(alphabeta_t I, angle_t el_theta){
 
 
 ![image-20241004102954214](./picture_diagrams/FOC_structure.png)
+
+#### Strom und Geschwindigkeitsregler
+
+
+
+![Pi_dq_coupling](.\picture_diagrams\Pi_dq_coupling.svg)
+
+
+
+##### Stromregler
+
+![current_control](.\picture_diagrams\current_control.svg)
+
+
+
+##### Geschwindigkeitsregler
+
+![Bode_plot](.\picture_diagrams\Bode_plot.svg)
+
+
 
 Der Strom Regelkreis wird mit der tuning method des technischen Optimums erstellt, bei der die Übertragungsfunktion des geregelten Systems als die eines Tiefpassfilter erster Ordnung eingestellt wird.
 
@@ -795,8 +835,6 @@ Die zeitliche Ableitung ergibt sich anschließend über $\dot{\omega} = f_s \fra
 Der Filter kombiniert damit Glättung und Differentiation und reduziert das bei einfachen Differenzen stark verstärkte Messrauschen. Mit $N=7$ ergibt sich ein guter Kompromiss zwischen Rauschunterdrückung und Verzögerung; die resultierende Gruppenlaufzeit beträgt drei Abtastschritte.
 
 ![Savitzky-Golan_filter.drawio](./picture_diagrams/Savitzky-Golan_filter.drawio.svg)
-
-
 
 
 

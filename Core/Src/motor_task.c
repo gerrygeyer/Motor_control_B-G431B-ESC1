@@ -27,6 +27,7 @@ static void oneHz_motor_task(Motor *m);
 
 FOC_HandleTypeDef foc_values;
 Control_Loops ctrl;
+freq_flag_t freq_flag; 
 
 ab_t gotostart_current = {0,0};
 
@@ -38,6 +39,7 @@ void init_motor_task(void)
     init_current_measurement();
     init_encoder(&foc_values);
     init_communication();
+    init_flags();
 
 }
 
@@ -58,8 +60,8 @@ void motor_time_management(void)
     // Middlespeed task
     if(middlespeed_task_counter >= MIDDLE_FREQUENCY_DIVIDER){
         middlespeed_task_counter = 0;
+        freq_flag.low = true;
         middlespeed_motor_task(&g_motor);
-        
     }else{
         middlespeed_task_counter += 1;
     }
@@ -67,6 +69,7 @@ void motor_time_management(void)
     // Lowspeed task
     if(lowspeed_task_counter >= LOW_FREQUENCY_DIVIDER){
         lowspeed_task_counter = 0;
+        freq_flag.mid = true;
         lowspeed_motor_task(&g_motor);
     }else{
         lowspeed_task_counter += 1;
@@ -75,9 +78,33 @@ void motor_time_management(void)
     // 1Hz task
     if(oneHz_task_counter >= (FOC_FREQUENCY)){
         oneHz_task_counter = 0;
+        freq_flag.oneHz = true;
         oneHz_motor_task(&g_motor);
     }else{
         oneHz_task_counter += 1;    
+    }
+
+}
+/* triggered in while(); not time critical calculation */
+void out_source_time_management(void){
+
+    if(freq_flag.low){
+        freq_flag.low = false;
+        // ######### not-interrupt lowspeed-task #######
+
+    }
+
+    if(freq_flag.mid){
+        freq_flag.mid = false;
+    // ######### not-interrupt middlespeed-task #######
+    
+
+    }
+
+    if(freq_flag.oneHz){
+        freq_flag.oneHz = false;
+        // ######### not-interrupt 1hz-task #######
+        update_PI_parameter(&ctrl,&foc_values);
     }
 
 }
@@ -254,4 +281,10 @@ void fault_motor_task(Motor *m)
 {
     m->state = ST_FAULT;
     m->speed_ref = 0;
+}
+
+void init_flags(void){
+    freq_flag.low = false;
+    freq_flag.mid = false;
+    freq_flag.oneHz = false;
 }

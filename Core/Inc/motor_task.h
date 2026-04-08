@@ -16,13 +16,21 @@
 #include "parameter.h"
 
 
-#define MIDDLE_FREQUENCY_DIVIDER 20         // 20 000 / 20 = 1000 Hz
-#define LOW_FREQUENCY_DIVIDER 200       // 20 000 / 200 = 100 Hz
+#define MIDDLE_FREQUENCY_DIVIDER    DIVISION_M         // 20 000 / 20 = 1000 Hz
+#define LOW_FREQUENCY_DIVIDER       DIVISION_L       // 20 000 / 100 = 200 Hz
 
 void init_motor_task(void);
 void motor_time_management(void);
+void out_source_time_management(void);
+void init_flags(void);
 
 Control_Loops* Control_GetLoops(void);
 FOC_HandleTypeDef* FOC_GetValues(void);
+
+typedef struct{
+    bool mid;
+    bool low;
+    bool oneHz;
+}freq_flag_t;
 
 #endif /* INC_MOTOR_TASK_H_ */

@@ -10,6 +10,7 @@
 #include "settings.h"
 #include "foc_math.h"
 #include <math.h>
+#include <stdlib.h>
 
 // PI Control Parameter (global)
 int16_t Kp_Q14, Ki_Q15, Kp_s_Q10, Ki_s_Q13;
@@ -98,6 +99,28 @@ void calculate_PI_parameter(Control_Loops *ctrl){
 	}
 	ctrl->speed.Ki.value = (int16_t)((ki_s * (float)(1 << ctrl->speed.Ki.q)) + 0.5f);	
 }
+void calculate_PI_parameter_small(Control_Loops *ctrl){
+	if(fabsf(ctrl->motor_params.max_voltage) < 7.0f){
+		// error, voltage too low -> only USB voltage (battery not connected)
+		return;
+	}
+	float kp_c = (ctrl->motor_params.Ls * ctrl->motor_params.bandwidth_current * 32.0f)/(float)ctrl->motor_params.max_voltage;	
+	float ki_c = (ctrl->motor_params.Rs * (float)ctrl->motor_params.bandwidth_current * 32.0f)/((float)ctrl->motor_params.max_voltage * (float)FOC_FREQUENCY);
+
+	q_format_t kp_q = find_Q_format(kp_c);
+	q_format_t ki_q = find_Q_format(ki_c);
+
+	if(kp_q == Qerror || ki_q == Qerror){
+		// handle error
+		return;
+	}
+	ctrl->current.Kp.q = (q_format_t)kp_q;
+	ctrl->current.Kp.value = (int16_t)((kp_c * (float)(1 << ctrl->current.Kp.q)) + 0.5f);
+	
+	ctrl->current.Ki.q = (q_format_t)ki_q;
+	ctrl->current.Ki.value = (int16_t)((ki_c * (float)(1 << ctrl->current.Ki.q)) + 0.5f);
+	
+}
 
 void init_control_functions(Control_Loops *ctrl){
 
@@ -106,7 +129,7 @@ void init_control_functions(Control_Loops *ctrl){
 	ctrl->motor_params.J = PMSM_J_M_R;
 	ctrl->motor_params.B = PMSM_B;
 	ctrl->motor_params.Ke = PMSM_KE;
-	ctrl->motor_params.max_current = MAX_CURRENT;
+	ctrl->motor_params.max_current = MAX_CURRENT;	// not used. nicht verwendet. 
 	ctrl->motor_params.max_voltage = MAX_VOLTAGE;
 	ctrl->motor_params.max_speed = MAX_SPEED;
 	ctrl->motor_params.max_speed_rad = (float)MAX_SPEED * RPM_TO_RAD_S; // convert to rad/s in q15 format
@@ -139,11 +162,21 @@ void clear_control_parameter(Control_Loops *ctrl){
 	ctrl->speed.windup = (dq_t){0,0};
 }
 
-void update_PI_parameter(Control_Loops *ctrl){
+void update_PI_parameter(Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_foc){
 
 	if(ctrl->new_parameter_flag){
 		calculate_PI_parameter(ctrl);
 		ctrl->new_parameter_flag = 0;
+		return;
+	}
+
+	static int16_t battery_voltage = 0;
+	int32_t voltage_drop = abs(pHandle_foc->source_voltage - battery_voltage);
+
+	if(voltage_drop > 102){ // voltage change of 10 % or more, we update the PI parameters
+		battery_voltage = abs(pHandle_foc->source_voltage);
+		ctrl->motor_params.max_voltage = (float)battery_voltage / (float)Q10; // convert back to real voltage in V
+		calculate_PI_parameter_small(ctrl);
 	}
 
 }

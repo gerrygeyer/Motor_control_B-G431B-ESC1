@@ -404,9 +404,10 @@ typedef struct{
 	alphabeta32_t I_est;
 	alphabeta32_t kH;
 	fixed16_t Rs;
-	fixed16_t delta_t;
+	fixed16_t Ts_over_Ls;
 	int16_t alpha_gain;
 	int16_t k_gain;
+	uint8_t observer_initialized;
 
 }sliding_mode_t;
 

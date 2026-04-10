@@ -18,6 +18,7 @@
 #include "encoder.h"
 #include "motor_param_est.h"
 #include "motor_inertia_est.h"
+#include "motor_observer.h"
 #include <stdint.h>
 
 static void highspeed_motor_task(Motor *m);
@@ -40,6 +41,7 @@ void init_motor_task(void)
     init_encoder(&foc_values);
     init_communication();
     init_flags();
+    init_observer();
 
 }
 

@@ -11,8 +11,8 @@
 
 
 
-
-
+void trigger_observer(FOC_HandleTypeDef *pHandle_foc);
+void init_observer(void);
 
 
 

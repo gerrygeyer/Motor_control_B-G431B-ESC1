@@ -6,6 +6,7 @@
 #include <current_measurement.h>
 
 #include "control.h"
+#include "motor_observer.h"
 #include "parameter.h"
 #include <encoder.h>
 #include <svm.h>
@@ -48,6 +49,8 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
 	switch (pHandle_foc->foc_mode){
 	case FOC_OPENLOOP: // generates openloop voltage vector without control
 		
+		pHandle_foc->I_alph_bet_q15 = clark_transformation_q15(pHandle_foc->I_ab_q15);	// Clarke transformation
+		trigger_observer(pHandle_foc); 
 
 		pHandle_foc->elec_theta_q15.sin = sin_t(pHandle_foc->theta_openloop);
 		pHandle_foc->elec_theta_q15.cos = cos_t(pHandle_foc->theta_openloop);
@@ -79,10 +82,12 @@ void execute_FOC(FOC_HandleTypeDef *pHandle_foc, Control_Loops *ctrl){
 
 	default: // FOC_CLOSELOOP and FOC_CURRENT_CONTROL (same for now, because we only have current control implemented)
 
+		pHandle_foc->I_alph_bet_q15 = clark_transformation_q15(pHandle_foc->I_ab_q15);	// Clarke transformation
+
+		trigger_observer(pHandle_foc); // update observer before Park transformation to get the best estimation possible for the current values
 		pHandle_foc->elec_theta_q15.sin = sin_t(pHandle_foc->theta);		// get sine and cosine in Q15
 		pHandle_foc->elec_theta_q15.cos = cos_t(pHandle_foc->theta);
 
-		pHandle_foc->I_alph_bet_q15 = clark_transformation_q15(pHandle_foc->I_ab_q15);	// Clarke transformation
 		pHandle_foc->I_dq_q15 = park_transformation_q15(pHandle_foc->I_alph_bet_q15, pHandle_foc->elec_theta_q15);	// Park transformation
 
 		pHandle_foc->V_dq_q15 = PI_id_iq_Q15(error_fct(pHandle_foc->I_ref_q15, pHandle_foc->I_dq_q15),ctrl, pHandle_foc); // PI current control in Q15

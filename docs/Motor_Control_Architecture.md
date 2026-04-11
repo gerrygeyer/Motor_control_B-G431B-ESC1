@@ -14,6 +14,8 @@ Im Folgenden arbeiten wir hier mit einem Oberflächenmontierten Permanentmagnet 
 
 ![PMSM_Structure](.\picture_diagrams\PMSM.svg)
 
+![PMSM_multipole](.\picture_diagrams\PMSM_multipole.svg)
+
 Dabei ist zu sehen der Vektor der den Magnetfluss der Permanentmagneten 
 
 

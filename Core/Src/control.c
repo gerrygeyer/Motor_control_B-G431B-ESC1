@@ -114,11 +114,11 @@ void calculate_PI_parameter_small(Control_Loops *ctrl){
 		// handle error
 		return;
 	}
-	ctrl->current.Kp.q = (q_format_t)kp_q;
-	ctrl->current.Kp.value = (int16_t)((kp_c * (float)(1 << ctrl->current.Kp.q)) + 0.5f);
+	ctrl->current_new.Kp.q = (q_format_t)kp_q;
+	ctrl->current_new.Kp.value = (int16_t)((kp_c * (float)(1 << ctrl->current_new.Kp.q)) + 0.5f);
 	
-	ctrl->current.Ki.q = (q_format_t)ki_q;
-	ctrl->current.Ki.value = (int16_t)((ki_c * (float)(1 << ctrl->current.Ki.q)) + 0.5f);
+	ctrl->current_new.Ki.q = (q_format_t)ki_q;
+	ctrl->current_new.Ki.value = (int16_t)((ki_c * (float)(1 << ctrl->current_new.Ki.q)) + 0.5f);
 	
 }
 
@@ -197,6 +197,14 @@ void reset_pi_integrator(Control_Loops *ctrl){
 
 
 dq_t PI_id_iq_Q15(dq_t error, Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_foc){
+
+	if(ctrl->new_parameter_flag){
+		ctrl->new_parameter_flag = 0;
+		ctrl->motor_params = ctrl->motor_params_new;	
+		ctrl->current		= ctrl->current_new;
+		ctrl->speed			= ctrl->speed_new;
+		ctrl->alpha			= ctrl->alpha_new;
+	}
 
 	dq_t Output, V;
 	dq_t P;

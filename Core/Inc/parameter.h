@@ -359,9 +359,13 @@ typedef struct {
 }motor_parameters_f;
 typedef struct {
 	motor_parameters_f motor_params;
+	motor_parameters_f motor_params_new;
     PID_Controller current;
+    PID_Controller current_new;
     PID_Controller speed;
+    PID_Controller speed_new;
 	int16_t alpha;
+	int16_t alpha_new;
 	int16_t modulation_index_q15;
 	uint8_t new_parameter_flag;
 } Control_Loops;

@@ -244,6 +244,15 @@ static void lowspeed_motor_task(Motor *m)
      */
     execute_voltage_measurement();
 
+    /**
+     * @brief Überträgt die neuen Parameter
+     *
+     */
+    do_update_pi_parameter(&ctrl);
+
+    /** @brief Setzt eine Flag für die Trägheitsschätzung (welche außerhalb der Interrupt Routine abläuft)
+     *
+     */
     set_inertia_estimation_flag();
 
 }

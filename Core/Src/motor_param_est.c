@@ -140,7 +140,9 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
         case PIDM_IDLE:
             // /* Wait for explicit start */
             
-            m->pidm_start_request_flag = true; // at the moment, we start directly 
+            foc_values->current_ff_flag = false; // deactivate feed forward during estimation; because we assume that the known engine parameters are incorrect
+            
+            m->pidm_start_request_flag = true; // hey, here we 'explicit' start yet :)
 
             if(m->pidm_start_request_flag){
                 m->pidm_start_request_flag = false;
@@ -269,13 +271,16 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
             ctrl->motor_params.cutoff_freq_div = CUTOFFF_FREQU_DIV;
             calculate_PI_parameter(ctrl);
             btn_stop_edge = true;           
+            foc_values->current_ff_flag = true; // reactivate feed forward after estimation is done;
             /* Hold results until user leaves ST_PARAMETER_ID or starts again */
             break;
 
         case PIDM_ERROR:
-            btn_stop_edge = true;         
+            // error same as default case
         default:
             /* Keep motor safe */
+            btn_stop_edge = true;
+            foc_values->current_ff_flag = true; 
             /* TODO: disable injections / set outputs safe */
             break;
     }

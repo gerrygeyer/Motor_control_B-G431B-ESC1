@@ -31,7 +31,8 @@ float debug_current_Iq;
 // init function
 void init_foc(FOC_HandleTypeDef *pHandle){
 
-
+	pHandle->current_ff_flag = true; // activate feed forward by default
+	
 }
 
 void clear_foc(FOC_HandleTypeDef *pHandle, Control_Loops *ctrl){ // need this for start and stop without setting new Kp,Ki,.. values

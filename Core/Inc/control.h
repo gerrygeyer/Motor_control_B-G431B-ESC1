@@ -8,6 +8,7 @@
 #ifndef INC_CONTROL_H_
 #define INC_CONTROL_H_
 
+
 void init_control_functions(Control_Loops *ctrl);
 void clear_control_parameter(Control_Loops *ctrl);
 
@@ -16,6 +17,8 @@ void calculate_PI_parameter(Control_Loops *ctrl);
 void reset_pi_integrator(Control_Loops *ctrl);
 
 void update_PI_parameter(Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_foc);
+
+
 
 /**
  * @brief       Q15 PI current controller for d- and q-axis.
@@ -43,5 +46,7 @@ dq_t PI_id_iq_Q15(dq_t error, Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_fo
 
 
 int16_t pi_speed_q15 (int32_t speed_rpm, int32_t speed_rpm_ref, Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_foc);
+
+void do_update_pi_parameter(Control_Loops *ctrl);
 
 #endif /* INC_CONTROL_H_ */

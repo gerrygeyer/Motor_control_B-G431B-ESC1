@@ -322,10 +322,12 @@ typedef struct{
 	alphabeta_t I_alph_bet_q15;
 	dq_t I_dq_q15;
 	dq_t V_dq_q15;
+	dq_t V_ff_q15; 
 	alphabeta_t V_alph_bet_q15;
 	abc_16t V_abc_q15;
 
 	int16_t Iq_meas_q15;
+	uint8_t current_ff_flag;		/* Activate Feed Forward term in Current control*/
 
 }FOC_HandleTypeDef;
 
@@ -339,65 +341,69 @@ typedef struct {
 typedef struct {
 	fixed16_t Kp;
 	fixed16_t Ki;
+	fixed16_t ff_c1;		/* Feed forward constant 1 (current): coupling terms between iq and id*/
+	fixed16_t ff_c2;		/* Feed forward constant 2 (current): backEMF compensation */
 	dq_32t I_buffer;
 	dq_t windup;
 } PID_Controller;
 
 typedef struct {
-	float Rs;
-	float Ls;
-	float J;
-	float B;
-	float Ke;
-	float bandwidth_current;
-	float bandwidth_speed;
-	float cutoff_freq_div;
-	float max_current;
-	float max_voltage;
-	float max_speed;
-	float max_speed_rad;
+	float Rs;								/* Resistance in Ohm*/
+	float Ls;								/* Induction in H*/
+	float J;								/* Inertia in Kg m^2 */
+	float B;								/* Friction coefficient*/
+	float Ke;								/* BackEMF constant Vrms/RPM */
+	float bandwidth_current;				/* bandwith of current control [rad/s]*/
+	float bandwidth_speed;					/* bandwith of speed control [rad/s]*/
+	float cutoff_freq_div;					/* Cutoff freq div from speed control, min. value = 5*/
+	float max_current;						/* max current (32 A) [no changes possible!]*/
+	float max_voltage;						/* Inverter Voltage */
+	float max_speed;						/* Max Speed [RPM] */
+	float max_speed_rad;					/* Max Speed [rad] */
 }motor_parameters_f;
 typedef struct {
-	motor_parameters_f motor_params;
-	motor_parameters_f motor_params_new;
-    PID_Controller current;
-    PID_Controller current_new;
-    PID_Controller speed;
-    PID_Controller speed_new;
-	int16_t alpha;
-	int16_t alpha_new;
-	int16_t modulation_index_q15;
-	uint8_t new_parameter_flag;
+	motor_parameters_f motor_params;		/* motor parameter in floatpoint unit*/
+	motor_parameters_f motor_params_new;	/* new calculated motor parameter*/
+    PID_Controller current;					/* PI (current) values in fixed point unit */
+    PID_Controller current_new;				/* new calculated PI (current) values*/
+    PID_Controller speed;					/* PI (speed) values in fixed point unit */
+    PID_Controller speed_new;				/* new calculated PI (speed) values*/
+	int16_t alpha;							/* alpha (Blending PI-IP (speed)) constant in Q15 |0,1] */
+	int16_t alpha_new;						/* new calculated alpha value*/
+	int16_t modulation_index_q15;			/* used modulation Index in Q15 [0,1]*/
+	uint8_t new_parameter_flag;				/* set to high if new parameter (_new) are successfuly calculated */
+	uint8_t new_user_parameter_flag;		/* set to high during online tuning to change values */
+	uint8_t nonvalid_values_flag;			/* set to high if we have nonvalid parameter as calculation result */
 } Control_Loops;
 
 
 typedef struct{
 	// estimation for Rs
-	estimation_states Rs;
-	uint32_t counter_Rs;
-	uint32_t time_div_Rs;
+	estimation_states Rs;					/* State of Estimation Process*/
+	uint32_t counter_Rs;					/* time management main Counter*/
+	uint32_t time_div_Rs;					/* time div value */
 	int16_t mini_counter_Rs[6];
 	int32_t med_voltage_Rs[6];
 	int32_t current_injection_q15[6];
-	float est_Rs;
+	float est_Rs;							/* Final estimation Rs value*/
 	// estimation for Ls
-	estimation_states Ls;
-	uint32_t counter_Ls;
+	estimation_states Ls;					/* State of Estimation Process*/
+	uint32_t counter_Ls;					/* time management main Counter*/
 	uint32_t time_div_Ls;
 	uint16_t hfi_angle_increment;
 	int16_t hfi_voltage_q15;
 	int16_t mini_counter_Ls[3];
 	int32_t med_current_Ls[3];
-	float est_Ls;
+	float est_Ls;							/* Final esimation Ls value*/
 	// estimation for Ke
-	estimation_states Ke;
-	uint32_t counter_Ke;
+	estimation_states Ke;					/* State of Estimation Process*/
+	uint32_t counter_Ke;					/* time management main Counter*/
 	uint32_t time_div_Ke;
 	uint32_t counter_Ke_measurement;
 	int32_t med_Vq15;
 	int32_t med_Iq15;
 	int32_t med_speed_q15;
-	float est_Ke;
+	float est_Ke;							/* Final estimation Ke value*/
 
 } param_estimation_t;
 

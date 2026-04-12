@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include "parameter.h"
+#include <stdbool.h>
 
 
 // pre-calculation

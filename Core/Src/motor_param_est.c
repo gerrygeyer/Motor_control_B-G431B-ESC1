@@ -176,11 +176,11 @@ void MotorParamEst_Service(Motor* m, Control_Loops *ctrl, FOC_HandleTypeDef *foc
             m->pidm_state = PIDM_EST_Ke;
 
             // update control parameters with the new estimated values
-            ctrl->motor_params.Ls = m->pidm_result.Ls_h;
-            ctrl->motor_params.Rs = m->pidm_result.Rs_ohm;
-            ctrl->alpha = (int16_t)(PI_IP_ALPHA * (float)Q15);
-            ctrl->motor_params.bandwidth_speed = ESTIMATION_BANDWIDTH_SPEED;
-            ctrl->motor_params.cutoff_freq_div = ESTIMATION_CUTOFF_FREQ_DIV;
+            ctrl->motor_params.Ls               = m->pidm_result.Ls_h;
+            ctrl->motor_params.Rs               = m->pidm_result.Rs_ohm;
+            ctrl->alpha                         = (int16_t)(ESTIMATION_PI_IP_ALPHA * (float)Q15);
+            ctrl->motor_params.bandwidth_speed  = ESTIMATION_BANDWIDTH_SPEED;
+            ctrl->motor_params.cutoff_freq_div  = ESTIMATION_CUTOFF_FREQ_DIV;
             calculate_PI_parameter(ctrl);
 
             }

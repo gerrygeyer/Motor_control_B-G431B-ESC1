@@ -47,6 +47,6 @@ float lin_reg(const int32_t *x, const int32_t *y, uint32_t n);
 
 #define ESTIMATION_BANDWIDTH_SPEED  20.0f          // desired bandwidth for the speed control loop in Hz, used to calculate the PI parameters after estimation
 #define ESTIMATION_CUTOFF_FREQ_DIV  10.0f          // cutoff frequency divider (min. 5)
-#define PI_IP_ALPHA                 0.2f           // blending factor for PI to IP; lower values mean more IP and less PI, higher values mean more PI and less IP
+#define ESTIMATION_PI_IP_ALPHA      0.1f           // blending factor for PI to IP; lower values mean more IP and less PI, higher values mean more PI and less IP
 
 #endif /* MOTOR_PARAM_EST_H */

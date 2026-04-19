@@ -8,6 +8,7 @@
 #include "control.h"
 #include "foc.h"
 #include "foc_math.h"
+#include "lookup_tables.h"
 
 
 

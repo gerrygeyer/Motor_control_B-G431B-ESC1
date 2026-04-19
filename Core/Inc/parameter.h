@@ -407,6 +407,9 @@ typedef struct{
 
 } param_estimation_t;
 
+typedef struct{
+	uint8_t z_flag;
+}encoder_t;
 
 typedef struct{
 
@@ -415,6 +418,7 @@ typedef struct{
 	alphabeta32_t kH;
 	fixed16_t Rs;
 	fixed16_t Ts_over_Ls;
+	uint16_t theta_est;
 	int16_t alpha_gain;
 	int16_t k_gain;
 	uint8_t observer_initialized;

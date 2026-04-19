@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include "parameter.h"
+#include "lookup_tables.h"
 #include <stdbool.h>
 
 
@@ -130,5 +131,8 @@ dq_t circle_limitation_Q15(dq_t Vdq, const uint32_t max_output);
  * @note Returns {Qerror, 0} if no valid representation can be found.
  */
 fixed16_t get_q_format(float value);
+
+
+uint16_t fast_atan2_u16(const alphabeta32_t *e);
 
 #endif /* INC_FOC_MATH_H_ */

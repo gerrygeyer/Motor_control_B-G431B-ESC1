@@ -41,6 +41,7 @@ uint8_t trigger;
 volatile uint8_t adc1_ready = 0;
 volatile uint8_t adc2_ready = 0;
 extern uint32_t operation_time_us;
+extern encoder_t encoder_values;
 
 /* USER CODE END PD */
 
@@ -301,6 +302,7 @@ void ADC1_2_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+  encoder_values.z_flag = 1; // set the flag for the Z signal of the encoder, this will be used in the main loop for zeroing the encoder count
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(Input_Encoder_Z_Pin);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */

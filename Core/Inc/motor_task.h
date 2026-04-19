@@ -20,8 +20,22 @@
 #define LOW_FREQUENCY_DIVIDER       DIVISION_L       // 20 000 / 100 = 200 Hz
 
 void init_motor_task(void);
+/**
+ * @brief Manages the timing for motor control tasks
+ * 
+ * @details This function is triggerd by Interrupt routine 
+ */
 void motor_time_management(void);
+/**
+ * @brief Manages the timing for output source tasks
+ * 
+ * @details This function run in while loop, which is not time critical, so we can do some calculation 
+ * here if needed. The main purpose of this function is to update the PI parameters when the battery 
+ * voltage changes, which can happen during operation.
+ * @see init_flags() for the initialization of the flags which trigger the different tasks
+ */
 void out_source_time_management(void);
+
 void init_flags(void);
 
 Control_Loops* Control_GetLoops(void);

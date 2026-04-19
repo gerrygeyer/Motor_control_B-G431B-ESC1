@@ -14,6 +14,8 @@ extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim4;
 extern uint32_t operation_time_us;
 
+encoder_t encoder_values;
+
 static inline int32_t SG7_Diff_speed_q15(const RingBuf7n16_t *rb, fixed16_t g_q15);
 
 static int16_t iir_lp_speed_q15(int16_t val);

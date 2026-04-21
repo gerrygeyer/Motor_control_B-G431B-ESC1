@@ -10,6 +10,7 @@ motor_types.h
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "parameter.h"
 
 typedef enum {
     ST_STOP = 0,
@@ -88,6 +89,8 @@ typedef struct {
 
 
 extern Motor g_motor;
-
+extern Control_Loops ctrl;
+extern FOC_HandleTypeDef foc_values;
+extern freq_flag_t freq_flag; 
 
 #endif /*INC_MOTOR_TYPES_H_*/

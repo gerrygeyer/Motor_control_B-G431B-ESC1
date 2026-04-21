@@ -10,6 +10,7 @@
 #include "stm32g4xx.h"
 // #include <cinttypes>
 #include <stdint.h>
+#include <stdbool.h>
 
 
 // ################## SYSTEM PARAMETER ##################
@@ -434,6 +435,12 @@ typedef struct{
 	int32_t y;
 	int32_t u;
 }uyt_32;
+
+typedef struct{
+    bool mid;
+    bool low;
+    bool oneHz;
+}freq_flag_t;
 
 
 

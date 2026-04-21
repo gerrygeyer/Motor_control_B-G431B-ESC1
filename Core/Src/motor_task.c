@@ -26,9 +26,7 @@ static void middlespeed_motor_task(Motor *m);
 static void lowspeed_motor_task(Motor *m);
 static void oneHz_motor_task(Motor *m);
 
-FOC_HandleTypeDef foc_values;
-Control_Loops ctrl;
-freq_flag_t freq_flag; 
+
 
 ab_t gotostart_current = {0,0};
 

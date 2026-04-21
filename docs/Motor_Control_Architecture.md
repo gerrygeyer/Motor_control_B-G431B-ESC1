@@ -18,9 +18,38 @@ Im Folgenden arbeiten wir hier mit einem Oberflächenmontierten Permanentmagnet 
 
 Dabei ist zu sehen der Vektor der den Magnetfluss der Permanentmagneten 
 
+$$
+\begin{bmatrix}
+\lambda_a \\
+\lambda_b \\
+\lambda_c
+\end{bmatrix}
+=
+\underbrace{
+\begin{bmatrix}
+L_{ms} + L_{ls} & -\tfrac{1}{2}L_{ms} & -\tfrac{1}{2}L_{ms} \\
+-\tfrac{1}{2}L_{ms} & L_{ms} + L_{ls} & -\tfrac{1}{2}L_{ms} \\
+-\tfrac{1}{2}L_{ms} & -\tfrac{1}{2}L_{ms} & L_{ms} + L_{ls}
+\end{bmatrix}
+}_{=\,L_{abcs}}
+\begin{bmatrix}
+i_a \\
+i_b \\
+i_c
+\end{bmatrix}
++
+\psi_m
+\underbrace{
+\begin{bmatrix}
+\cos\theta \\
+\cos\left(\theta - \tfrac{2\pi}{3}\right) \\
+\cos\left(\theta + \tfrac{2\pi}{3}\right)
+\end{bmatrix}
+}_{=\,\psi(\theta)}
+$$
+$L_{ms}:$ Streuinduktivität
 
-
-
+$L_{ls}:$ Hauptinduktivität
 
 ## Übersicht der Quellcode-Module
 

@@ -41,10 +41,5 @@ void init_flags(void);
 Control_Loops* Control_GetLoops(void);
 FOC_HandleTypeDef* FOC_GetValues(void);
 
-typedef struct{
-    bool mid;
-    bool low;
-    bool oneHz;
-}freq_flag_t;
 
 #endif /* INC_MOTOR_TASK_H_ */

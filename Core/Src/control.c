@@ -223,11 +223,11 @@ void update_PI_parameter(Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_foc){
 	static int16_t battery_voltage = 0;
 	int32_t voltage_drop = abs(pHandle_foc->source_voltage - battery_voltage);
 
-	if(voltage_drop > 102){ // voltage change of 10 % or more, we update the PI parameters
-		battery_voltage = abs(pHandle_foc->source_voltage);
-		ctrl->motor_params.max_voltage = (float)battery_voltage / (float)Q10; // convert back to real voltage in V
-		calculate_PI_parameter_small(ctrl);
-	}
+	// if(voltage_drop > 102){ // voltage change of 10 % or more, we update the PI parameters
+	// 	battery_voltage = abs(pHandle_foc->source_voltage);
+	// 	ctrl->motor_params.max_voltage = (float)battery_voltage / (float)Q10; // convert back to real voltage in V
+	// 	calculate_PI_parameter_small(ctrl);
+	// }
 
 }
 
@@ -304,12 +304,12 @@ dq_t PI_id_iq_Q15(dq_t error, Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_fo
 
 	x = ((ctrl->current.I_buffer.d >> 5) + P.d);
 
-	if(pHandle_foc->current_ff_flag){
-		int32_t ff_coupling_term = CLAMP_INT32_TO_INT16(((int64_t)pHandle_foc->I_ref_q15.q * (int64_t)ctrl->current.ff_c1.value * (int64_t)pHandle_foc->speed_ref) >> ctrl->current.ff_c1.q); // feed forward term for coupling between iq and id
-		int32_t ff_emf_term = CLAMP_INT32_TO_INT16(((int64_t)pHandle_foc->speed_ref * (int64_t)ctrl->current.ff_c2.value) >> ctrl->current.ff_c2.q); // feed forward term for back EMF compensation
-		x += ff_coupling_term;
-		x += ff_emf_term;
-	}
+	// if(pHandle_foc->current_ff_flag){
+	// 	int32_t ff_coupling_term = CLAMP_INT32_TO_INT16(((int64_t)pHandle_foc->I_ref_q15.q * (int64_t)ctrl->current.ff_c1.value * (int64_t)pHandle_foc->speed_ref) >> ctrl->current.ff_c1.q); // feed forward term for coupling between iq and id
+	// 	int32_t ff_emf_term = CLAMP_INT32_TO_INT16(((int64_t)pHandle_foc->speed_ref * (int64_t)ctrl->current.ff_c2.value) >> ctrl->current.ff_c2.q); // feed forward term for back EMF compensation
+	// 	x += ff_coupling_term;
+	// 	x += ff_emf_term;
+	// }
 
 	V.d = CLAMP_INT32_TO_INT16(x);
 
@@ -332,10 +332,10 @@ dq_t PI_id_iq_Q15(dq_t error, Control_Loops *ctrl, FOC_HandleTypeDef *pHandle_fo
 
 	x = ((ctrl->current.I_buffer.q >> 5) + P.q);
 
-	if(pHandle_foc->current_ff_flag){
-		int32_t ff_coupling_term = CLAMP_INT32_TO_INT16(((int64_t)pHandle_foc->I_ref_q15.d * (int64_t)ctrl->current.ff_c1.value * (int64_t)pHandle_foc->speed_ref) >> ctrl->current.ff_c1.q); // feed forward term for coupling between iq and id
-		x += ff_coupling_term;
-	}
+	// if(pHandle_foc->current_ff_flag){
+	// 	int32_t ff_coupling_term = CLAMP_INT32_TO_INT16(((int64_t)pHandle_foc->I_ref_q15.d * (int64_t)ctrl->current.ff_c1.value * (int64_t)pHandle_foc->speed_ref) >> ctrl->current.ff_c1.q); // feed forward term for coupling between iq and id
+	// 	x += ff_coupling_term;
+	// }
 
 	V.q = CLAMP_INT32_TO_INT16(x);
 
